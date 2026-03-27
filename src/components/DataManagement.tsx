@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
-import { collection, getDocs, writeBatch, doc, query } from 'firebase/firestore';
+import { collection, getDocs, writeBatch, doc, query, getCountFromServer } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
-import { Upload, Trash2, Loader2, AlertTriangle, CheckCircle2, FileSpreadsheet, DatabaseBackup, Download } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { Upload, Trash2, Loader2, AlertTriangle, CheckCircle2, FileSpreadsheet, DatabaseBackup, Download, Info } from 'lucide-react';
+import { cn, getFirestoreErrorMessage } from '../lib/utils';
 import { logAuditAction } from '../lib/audit';
 
 const COLLECTIONS = [
@@ -326,6 +327,17 @@ export default function DataManagement() {
     return jsonData;
   };
 
+  const getCollectionSize = async (collectionName: string) => {
+    try {
+      const coll = collection(db, collectionName);
+      const snapshot = await getCountFromServer(coll);
+      return snapshot.data().count;
+    } catch (err) {
+      console.error('Failed to get collection size:', err);
+      return 0;
+    }
+  };
+
   const handleImportClick = () => {
     if (!files || files.length === 0) {
       setModal({
@@ -342,7 +354,7 @@ export default function DataManagement() {
     setModal({
       isOpen: true,
       title: 'Confirm Batch Import',
-      message: `You have selected ${files.length} file(s).\n\n${clearBeforeImport ? 'Existing data in the target sections will be CLEARED once before importing.' : 'Data will be APPENDED to existing records.'}\n\nDo you want to proceed?`,
+      message: `You have selected ${files.length} file(s).\n\n${clearBeforeImport ? 'Existing data in the target sections will be CLEARED once before importing.' : 'Data will be APPENDED to existing records.'}\n\n⚠️ NOTE: Large imports consume your daily Firestore write quota (20,000 units on free tier).\n\nDo you want to proceed?`,
       type: 'info',
       confirmText: 'Yes, Start Import',
       onCancel: closeModal,
@@ -360,6 +372,22 @@ export default function DataManagement() {
             const data = await file.arrayBuffer();
             const workbook = XLSX.read(data, { type: 'array' });
             
+            // Estimate total rows across all sheets to warn user
+            let estimatedRows = 0;
+            workbook.SheetNames.forEach(name => {
+              const sheet = workbook.Sheets[name];
+              const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1:A1');
+              estimatedRows += (range.e.r - range.s.r);
+            });
+
+            if (estimatedRows > 5000) {
+              const proceed = window.confirm(`Warning: This file contains approximately ${estimatedRows} rows. Importing this may consume a significant portion of your daily Firestore quota. Do you want to continue?`);
+              if (!proceed) {
+                setLoading(false);
+                return;
+              }
+            }
+
             if (importMode === 'specific') {
               // Specific Page Mode: Try to find a matching sheet, otherwise use the first sheet
               let targetSheetName = workbook.SheetNames[0]; // Default to first sheet
@@ -471,10 +499,16 @@ export default function DataManagement() {
           if (fileInputRef.current) fileInputRef.current.value = '';
         } catch (err: any) {
           console.error(err);
+          let errorMessage = getFirestoreErrorMessage(err);
+          
+          if (err.code === 'resource-exhausted' || err.message?.includes('quota')) {
+            errorMessage = "Firestore 寫入配額已用盡 (每日 20,000 次)。請等待 24 小時後重置，或聯繫管理員升級方案。";
+          }
+
           setModal({
             isOpen: true,
             title: 'Import Failed',
-            message: err.message || 'An error occurred while parsing or uploading the data.',
+            message: errorMessage,
             type: 'danger',
             onConfirm: closeModal,
             confirmText: 'OK'
@@ -486,13 +520,31 @@ export default function DataManagement() {
     });
   };
 
-  const handleClearClick = () => {
+  const handleClearClick = async () => {
     const targetLabel = clearTarget === 'all' ? 'ALL Collections' : COLLECTIONS.find(c => c.id === clearTarget)?.label;
+    
+    setLoading(true);
+    let estimatedWrites = 0;
+    try {
+      if (clearTarget === 'all') {
+        for (const col of COLLECTIONS) {
+          estimatedWrites += await getCollectionSize(col.id);
+        }
+      } else {
+        estimatedWrites = await getCollectionSize(clearTarget);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+
+    const quotaWarning = estimatedWrites > 1000 ? `\n\n⚠️ WARNING: This operation involves approximately ${estimatedWrites.toLocaleString()} write units. You have a daily limit of 20,000 writes on the free tier.` : '';
 
     setModal({
       isOpen: true,
       title: 'Confirm Clear Data',
-      message: `Are you absolutely sure you want to clear data in "${targetLabel}"? This action CANNOT be undone.`,
+      message: `Are you absolutely sure you want to clear data in "${targetLabel}"? This action CANNOT be undone.${quotaWarning}`,
       type: 'danger',
       confirmText: 'Yes, Clear Data',
       onCancel: closeModal,
@@ -524,7 +576,7 @@ export default function DataManagement() {
           setModal({
             isOpen: true,
             title: 'Clear Failed',
-            message: err.message || 'An error occurred while clearing data.',
+            message: getFirestoreErrorMessage(err),
             type: 'danger',
             onConfirm: closeModal,
             confirmText: 'OK'
@@ -537,140 +589,191 @@ export default function DataManagement() {
   };
 
   return (
-    <div className="space-y-8 max-w-4xl">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-8 max-w-4xl"
+    >
+      {/* Quota Info */}
+      <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 flex items-start gap-4 shadow-sm">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+          <AlertTriangle className="h-4 w-4" />
+        </div>
+        <div>
+          <h4 className="text-sm font-bold text-amber-900">Firestore Free Tier Quota Notice</h4>
+          <p className="text-xs text-amber-700 leading-relaxed mt-1">
+            The Firebase free tier includes <strong>20,000 write operations per day</strong>. 
+            Large imports or clearing large collections will consume this quota. 
+            <br />
+            <span className="font-semibold text-amber-800">Current Status:</span> If you encounter "Quota limit exceeded", please wait 24 hours for the limit to reset.
+          </p>
+        </div>
+      </div>
+
       {/* Import Section */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <div className="mb-6 flex items-center gap-3 border-b border-zinc-100 pb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-            <FileSpreadsheet className="h-5 w-5" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-zinc-900">Import Data</h3>
-              <button
-                onClick={handleDownloadTemplate}
-                className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700"
-              >
-                <Download className="h-3 w-3" />
-                Download Template
-              </button>
+      <div className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500" />
+        
+        <div className="mb-8 flex items-center justify-between border-b border-zinc-100 pb-6">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+              <FileSpreadsheet className="h-6 w-6" />
             </div>
-            <p className="text-xs text-zinc-500 mt-1">Upload multiple Excel files. Choose auto-detect or import to a specific page.</p>
+            <div>
+              <h3 className="text-xl font-bold text-zinc-900">Import Data</h3>
+              <p className="text-sm text-zinc-500">Upload Excel files to update system records</p>
+            </div>
           </div>
+          <button
+            onClick={handleDownloadTemplate}
+            className="flex items-center gap-2 rounded-xl bg-zinc-50 px-4 py-2 text-xs font-bold text-zinc-600 hover:bg-zinc-100 transition-colors border border-zinc-200"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Download Template
+          </button>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-500">
+        <div className="grid gap-8 md:grid-cols-2">
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">
               Import Mode
             </label>
-            <select
-              value={importMode}
-              onChange={(e) => setImportMode(e.target.value as 'auto' | 'specific')}
-              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            >
-              <option value="auto">Auto-Detect Sheets</option>
-              <option value="specific">Import to Specific Page</option>
-            </select>
-            <p className="mt-1 text-[10px] text-zinc-400">
-              {importMode === 'auto' ? 'System will auto-detect sheets and import them.' : 'System will import to the selected page.'}
+            <div className="relative">
+              <select
+                value={importMode}
+                onChange={(e) => setImportMode(e.target.value as 'auto' | 'specific')}
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all appearance-none"
+              >
+                <option value="auto">Auto-Detect Sheets</option>
+                <option value="specific">Import to Specific Page</option>
+              </select>
+              <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400">
+                <Loader2 className="h-4 w-4 animate-spin hidden" />
+              </div>
+            </div>
+            <p className="text-[10px] text-zinc-400 ml-1">
+              {importMode === 'auto' ? 'System will automatically match sheets to collections.' : 'System will force import to the selected page.'}
             </p>
           </div>
           
           {importMode === 'specific' && (
-            <div>
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-500">
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="space-y-2"
+            >
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">
                 Target Page
               </label>
               <select
                 value={targetCollection}
                 onChange={(e) => setTargetCollection(e.target.value)}
-                className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all appearance-none"
               >
                 {COLLECTIONS.map(col => (
                   <option key={col.id} value={col.id}>{col.label}</option>
                 ))}
               </select>
-              <p className="mt-1 text-[10px] text-zinc-400">Select the page to import data into.</p>
-            </div>
+            </motion.div>
           )}
 
-          <div className={importMode === 'auto' ? 'col-span-1' : 'md:col-span-2'}>
-            <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-500">
+          <div className="md:col-span-2 space-y-2">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">
               Excel Files (.xlsx, .xls)
             </label>
-            <input
-              type="file"
-              accept=".xlsx, .xls, .csv, .xlsm"
-              multiple
-              ref={fileInputRef}
-              onChange={(e) => setFiles(e.target.files)}
-              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm file:mr-4 file:rounded-full file:border-0 file:bg-blue-50 file:px-4 file:py-1 file:text-xs file:font-bold file:text-blue-600 hover:file:bg-blue-100 focus:outline-none"
-            />
-            <p className="mt-1 text-[10px] text-zinc-400">Hold Ctrl/Cmd or Shift to select multiple files.</p>
+            <div className="relative group">
+              <input
+                type="file"
+                accept=".xlsx, .xls, .csv, .xlsm"
+                multiple
+                ref={fileInputRef}
+                onChange={(e) => setFiles(e.target.files)}
+                className="w-full rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50/30 px-4 py-8 text-sm transition-all hover:border-blue-400 hover:bg-blue-50/30 focus:outline-none file:mr-4 file:rounded-full file:border-0 file:bg-blue-600 file:px-6 file:py-2 file:text-xs file:font-bold file:text-white hover:file:bg-blue-700 cursor-pointer"
+              />
+              {!files && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-zinc-400 text-xs font-medium">
+                  Drag and drop or click to select files
+                </div>
+              )}
+            </div>
+            {files && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {Array.from(files as any).map((file: any, idx) => (
+                  <span key={idx} className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold text-blue-700 border border-blue-100">
+                    <FileSpreadsheet className="h-3 w-3" />
+                    {file.name}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="col-span-1 md:col-span-2">
-            <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-500">
-              Facility (Optional)
+          <div className="md:col-span-2 space-y-2">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">
+              Facility Override (Optional)
             </label>
             <input
               type="text"
               value={globalFacility}
               onChange={(e) => setGlobalFacility(e.target.value)}
-              placeholder="Enter facility name to apply to all imported records"
-              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              placeholder="e.g. FACILITY_A"
+              className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all"
             />
-            <p className="mt-1 text-[10px] text-zinc-400">If provided, this will override the facility field in the imported data.</p>
+            <p className="text-[10px] text-zinc-400 ml-1">If set, all imported records will be assigned this facility name.</p>
           </div>
         </div>
 
-        <div className="mt-6 flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="clearBeforeImport"
-            checked={clearBeforeImport}
-            onChange={(e) => setClearBeforeImport(e.target.checked)}
-            className="h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
-          />
-          <label htmlFor="clearBeforeImport" className="text-sm font-medium text-zinc-700">
-            Clear existing data before importing (Smart Clear: clears each target only once per batch)
-          </label>
-        </div>
+        <div className="mt-8 flex items-center justify-between border-t border-zinc-100 pt-6">
+          <div className="flex items-center gap-3">
+            <div className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                id="clearBeforeImport"
+                checked={clearBeforeImport}
+                onChange={(e) => setClearBeforeImport(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-zinc-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              <label htmlFor="clearBeforeImport" className="ml-3 text-sm font-medium text-zinc-700">
+                Clear existing data before importing
+              </label>
+            </div>
+          </div>
 
-        <div className="mt-6 flex justify-end">
           <button
             onClick={handleImportClick}
             disabled={loading || !files || files.length === 0}
-            className="flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-xl bg-blue-600 px-8 py-3 text-sm font-bold text-white transition-all hover:bg-blue-700 disabled:opacity-50 shadow-lg shadow-blue-600/20"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            {loading ? 'Processing...' : 'Import Files'}
+            {loading ? 'Processing...' : 'Start Import'}
           </button>
         </div>
       </div>
 
       {/* Clear Section */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <div className="mb-6 flex items-center gap-3 border-b border-zinc-100 pb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-600">
-            <DatabaseBackup className="h-5 w-5" />
+      <div className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-orange-500" />
+        
+        <div className="mb-8 flex items-center gap-4 border-b border-zinc-100 pb-6">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+            <DatabaseBackup className="h-6 w-6" />
           </div>
           <div>
-            <h3 className="font-bold text-zinc-900">Clear Data</h3>
-            <p className="text-xs text-zinc-500">Bulk delete records from sections</p>
+            <h3 className="text-xl font-bold text-zinc-900">Maintenance</h3>
+            <p className="text-sm text-zinc-500">Bulk delete records from system collections</p>
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-500">
+        <div className="grid gap-8 md:grid-cols-2">
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">
               Target Section to Clear
             </label>
             <select
               value={clearTarget}
               onChange={(e) => setClearTarget(e.target.value)}
-              className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20"
+              className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/10 transition-all appearance-none"
             >
               <option value="all">⚠️ ALL SECTIONS (Clear Everything)</option>
               {COLLECTIONS.map(col => (
@@ -678,61 +781,70 @@ export default function DataManagement() {
               ))}
             </select>
           </div>
-        </div>
 
-        <div className="mt-6 flex justify-end">
-          <button
-            onClick={handleClearClick}
-            disabled={loading}
-            className="flex items-center gap-2 rounded-lg bg-red-600 px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-            {loading ? 'Processing...' : 'Clear Data'}
-          </button>
+          <div className="flex items-end">
+            <button
+              onClick={handleClearClick}
+              disabled={loading}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-8 py-3 text-sm font-bold text-white transition-all hover:bg-red-700 disabled:opacity-50 shadow-lg shadow-red-600/20"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              {loading ? 'Processing...' : 'Clear Selected Data'}
+            </button>
+          </div>
         </div>
-        <p className="mt-4 text-xs text-zinc-400">
-          * Note: To delete a single record, please navigate to the specific section and use the trash icon next to the record.
-        </p>
+        
+        <div className="mt-6 flex items-center gap-2 text-[10px] text-zinc-400 font-medium bg-zinc-50 p-3 rounded-lg">
+          <AlertTriangle className="h-3 w-3 text-amber-500" />
+          <span>Warning: This action is destructive and cannot be undone. Always backup your data before clearing.</span>
+        </div>
       </div>
 
       {/* Custom Modal */}
-      {modal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md animate-in fade-in zoom-in-95 rounded-2xl bg-white p-6 shadow-2xl">
-            <div className="mb-4 flex items-center gap-3">
-              {modal.type === 'danger' && <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600"><AlertTriangle className="h-5 w-5" /></div>}
-              {modal.type === 'success' && <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-600"><CheckCircle2 className="h-5 w-5" /></div>}
-              {modal.type === 'info' && <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600"><AlertTriangle className="h-5 w-5" /></div>}
-              <h3 className="text-lg font-bold text-zinc-900">{modal.title}</h3>
-            </div>
-            <p className="mb-8 text-sm leading-relaxed text-zinc-600 whitespace-pre-wrap">{modal.message}</p>
-            <div className="flex justify-end gap-3">
-              {modal.onCancel && (
-                <button
-                  onClick={modal.onCancel}
-                  disabled={loading}
-                  className="rounded-lg px-4 py-2 text-sm font-bold text-zinc-600 transition-colors hover:bg-zinc-100 disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-              )}
-              <button
-                onClick={modal.onConfirm}
-                disabled={loading}
-                className={cn(
-                  "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-white transition-colors disabled:opacity-50",
-                  modal.type === 'danger' ? "bg-red-600 hover:bg-red-700" : 
-                  modal.type === 'success' ? "bg-green-600 hover:bg-green-700" : 
-                  "bg-blue-600 hover:bg-blue-700"
+      <AnimatePresence>
+        {modal.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/60 p-4 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-md rounded-[2rem] bg-white p-8 shadow-2xl"
+            >
+              <div className="mb-6 flex items-center gap-4">
+                {modal.type === 'danger' && <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-600"><AlertTriangle className="h-6 w-6" /></div>}
+                {modal.type === 'success' && <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-green-50 text-green-600"><CheckCircle2 className="h-6 w-6" /></div>}
+                {modal.type === 'info' && <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><AlertTriangle className="h-6 w-6" /></div>}
+                <h3 className="text-xl font-bold text-zinc-900">{modal.title}</h3>
+              </div>
+              <p className="mb-8 text-sm leading-relaxed text-zinc-600 whitespace-pre-wrap">{modal.message}</p>
+              <div className="flex justify-end gap-3">
+                {modal.onCancel && (
+                  <button
+                    onClick={modal.onCancel}
+                    disabled={loading}
+                    className="rounded-xl px-6 py-2.5 text-sm font-bold text-zinc-500 transition-colors hover:bg-zinc-100 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
                 )}
-              >
-                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {modal.confirmText || 'OK'}
-              </button>
-            </div>
+                <button
+                  onClick={modal.onConfirm}
+                  disabled={loading}
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-bold text-white transition-all disabled:opacity-50 shadow-lg",
+                    modal.type === 'danger' ? "bg-red-600 hover:bg-red-700 shadow-red-600/20" : 
+                    modal.type === 'success' ? "bg-green-600 hover:bg-green-700 shadow-green-600/20" : 
+                    "bg-blue-600 hover:bg-blue-700 shadow-blue-600/20"
+                  )}
+                >
+                  {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {modal.confirmText || 'OK'}
+                </button>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }

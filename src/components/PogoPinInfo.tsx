@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
-import { Plus, Trash2, Edit2, Search } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, Check, X } from 'lucide-react';
+import { cn } from '../lib/utils';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface PogoPin {
   id: string;
@@ -44,121 +46,160 @@ export default function PogoPinInfo({ isAdmin }: { isAdmin: boolean }) {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-          <input
-            type="text"
-            placeholder="Search pins..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-lg border border-zinc-200 bg-zinc-50 pl-10 pr-4 py-2 text-sm focus:border-[#141414] focus:bg-white focus:outline-none"
-          />
+    <div className="space-y-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <h2 className="font-serif text-3xl italic text-zinc-900">Pogo Pin Info</h2>
+          <p className="text-xs text-zinc-400 uppercase tracking-[0.2em] font-bold">Monitor pogo pin inventory levels</p>
         </div>
-        {isAdmin && (
-          <button 
-            onClick={async () => {
-              const docRef = await addDoc(collection(db, 'pogoPins'), { pinPn: 'NEW_PIN', qty: 0, facility: '' });
-              setEditingId(docRef.id);
-            }}
-            className="flex items-center gap-2 rounded-lg bg-[#141414] px-4 py-2 text-sm font-bold text-white hover:bg-zinc-800"
-          >
-            <Plus className="h-4 w-4" />
-            <span>ADD PIN</span>
-          </button>
-        )}
+        <div className="flex items-center gap-4">
+          <div className="relative group">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-primary transition-colors" />
+            <input
+              type="text"
+              placeholder="Search pins..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-64 rounded-xl border border-zinc-200 bg-zinc-50/50 pl-10 pr-4 py-2.5 text-sm focus:border-brand-primary focus:bg-white focus:outline-none transition-all"
+            />
+          </div>
+          {isAdmin && (
+            <button 
+              onClick={async () => {
+                const docRef = await addDoc(collection(db, 'pogoPins'), { pinPn: 'NEW_PIN', qty: 0, facility: '' });
+                setEditingId(docRef.id);
+              }}
+              className="flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-black/10 active:scale-95"
+            >
+              <Plus className="h-4 w-4" />
+              <span>ADD PIN</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredPins.map(pin => (
-          <div key={pin.id} className="group relative rounded-xl border border-zinc-200 bg-zinc-50 p-6 transition-all hover:bg-white hover:shadow-lg hover:shadow-black/5">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Facility</p>
-                {editingId === pin.id ? (
-                  <input
-                    type="text"
-                    defaultValue={pin.facility || ''}
-                    className="w-full border-b border-[#141414] bg-transparent text-sm font-bold focus:outline-none"
-                    onBlur={(e) => handleUpdate(pin.id, { facility: e.target.value })}
-                  />
-                ) : (
-                  <h3 className="text-sm font-bold text-zinc-600">{pin.facility || '-'}</h3>
-                )}
+      <motion.div 
+        layout
+        className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
+      >
+        <AnimatePresence mode="popLayout">
+          {filteredPins.map((pin, idx) => (
+            <motion.div 
+              layout
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ delay: idx * 0.05 }}
+              key={pin.id} 
+              className="group relative rounded-3xl border border-zinc-100 bg-white p-8 card-shadow transition-all hover:border-brand-primary/20"
+            >
+              <div className="flex flex-col gap-6">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400">Facility</p>
+                    {editingId === pin.id ? (
+                      <input
+                        type="text"
+                        defaultValue={pin.facility || ''}
+                        className="w-full border-b border-brand-primary bg-transparent text-sm font-bold focus:outline-none py-1"
+                        onBlur={(e) => handleUpdate(pin.id, { facility: e.target.value })}
+                      />
+                    ) : (
+                      <h3 className="text-sm font-bold text-zinc-500">{pin.facility || '-'}</h3>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400">Quantity</p>
+                    {editingId === pin.id ? (
+                      <input
+                        type="number"
+                        defaultValue={pin.qty}
+                        className="w-20 border-b border-brand-primary bg-transparent text-3xl font-bold focus:outline-none py-1 text-right"
+                        onBlur={(e) => handleUpdate(pin.id, { qty: Number(e.target.value) })}
+                      />
+                    ) : (
+                      <p className={cn(
+                        "text-3xl font-bold transition-colors",
+                        pin.qty < 50 ? "text-rose-500" : "text-zinc-900"
+                      )}>{pin.qty}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400">Part Number</p>
+                  {editingId === pin.id ? (
+                    <input
+                      type="text"
+                      defaultValue={pin.pinPn}
+                      className="w-full border-b border-brand-primary bg-transparent text-xl font-bold focus:outline-none py-1"
+                      onBlur={(e) => handleUpdate(pin.id, { pinPn: e.target.value })}
+                    />
+                  ) : (
+                    <h3 className="text-xl font-bold text-brand-primary tracking-tight">{pin.pinPn}</h3>
+                  )}
+                </div>
               </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Part Number</p>
-                {editingId === pin.id ? (
-                  <input
-                    type="text"
-                    defaultValue={pin.pinPn}
-                    className="w-full border-b border-[#141414] bg-transparent text-lg font-bold focus:outline-none"
-                    onBlur={(e) => handleUpdate(pin.id, { pinPn: e.target.value })}
-                  />
-                ) : (
-                  <h3 className="text-lg font-bold">{pin.pinPn}</h3>
-                )}
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Quantity</p>
-                {editingId === pin.id ? (
-                  <input
-                    type="number"
-                    defaultValue={pin.qty}
-                    className="w-20 border-b border-[#141414] bg-transparent text-2xl font-bold focus:outline-none"
-                    onBlur={(e) => handleUpdate(pin.id, { qty: Number(e.target.value) })}
-                  />
-                ) : (
-                  <p className="text-2xl font-bold text-[#141414]">{pin.qty}</p>
-                )}
-              </div>
-            </div>
-            
-            {isAdmin && (
-              <div className="mt-4 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                <button onClick={() => setEditingId(pin.id)} className="rounded-lg bg-zinc-100 p-2 text-zinc-500 hover:bg-[#141414] hover:text-white">
-                  <Edit2 className="h-4 w-4" />
-                </button>
-                <button onClick={() => setModal({ isOpen: true, id: pin.id })} className="rounded-lg bg-zinc-100 p-2 text-zinc-500 hover:bg-red-600 hover:text-white">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+              
+              {isAdmin && (
+                <div className="mt-8 flex gap-2 opacity-0 transition-all group-hover:opacity-100 translate-y-2 group-hover:translate-y-0">
+                  <button 
+                    onClick={() => setEditingId(pin.id)} 
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-zinc-50 py-2.5 text-xs font-bold text-zinc-500 hover:bg-brand-primary hover:text-white transition-all"
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
+                    EDIT
+                  </button>
+                  <button 
+                    onClick={() => setModal({ isOpen: true, id: pin.id })} 
+                    className="p-2.5 rounded-xl bg-zinc-50 text-zinc-400 hover:bg-rose-50 hover:text-rose-600 transition-all"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </motion.div>
 
       {/* Delete Confirmation Modal */}
-      {modal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm transition-all">
-          <div className="w-full max-w-md animate-in fade-in zoom-in-95 rounded-2xl bg-white p-6 shadow-2xl">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
-                <Trash2 className="h-5 w-5" />
+      <AnimatePresence>
+        {modal.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/60 p-4 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-md rounded-[2rem] bg-white p-8 shadow-2xl"
+            >
+              <div className="mb-6 flex items-center gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+                  <Trash2 className="h-6 w-6" />
+                </div>
+                <h3 className="text-xl font-bold text-zinc-900">Confirm Deletion</h3>
               </div>
-              <h3 className="text-lg font-bold text-zinc-900">Confirm Deletion</h3>
-            </div>
-            <p className="mb-8 text-sm leading-relaxed text-zinc-600">
-              Are you sure you want to delete this pogo pin? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setModal({ isOpen: false, id: null })}
-                className="rounded-lg px-4 py-2 text-sm font-bold text-zinc-600 transition-colors hover:bg-zinc-100"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-red-700"
-              >
-                Delete
-              </button>
-            </div>
+              <p className="mb-8 text-sm leading-relaxed text-zinc-600">
+                Are you sure you want to delete this pogo pin record? This action cannot be undone and will be permanently removed from the system.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setModal({ isOpen: false, id: null })}
+                  className="rounded-xl px-6 py-2.5 text-sm font-bold text-zinc-500 transition-colors hover:bg-zinc-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="flex items-center gap-2 rounded-xl bg-red-600 px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-red-700 shadow-lg shadow-red-600/20"
+                >
+                  Delete Record
+                </button>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }
