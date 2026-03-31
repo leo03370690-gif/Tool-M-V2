@@ -18,7 +18,8 @@ import {
   DatabaseBackup,
   Layers,
   Bell,
-  Search as SearchIcon
+  Search as SearchIcon,
+  Calculator
 } from 'lucide-react';
 import ProductInfo from './ProductInfo';
 import SocketInfo from './SocketInfo';
@@ -30,6 +31,7 @@ import UserManagement from './UserManagement';
 import SettingsTab from './Settings';
 import DataManagement from './DataManagement';
 import AuditLogs from './AuditLogs';
+import RequiredPogoPin from './RequiredPogoPin';
 
 interface DashboardProps {
   user: FirebaseUser;
@@ -38,7 +40,7 @@ interface DashboardProps {
   onBackToFacility: () => void;
 }
 
-type Tab = 'product' | 'socket' | 'change-kit' | 'pogo-pin' | 'life-time' | 'load-board' | 'users' | 'settings' | 'data-management' | 'audit-logs';
+type Tab = 'product' | 'socket' | 'change-kit' | 'pogo-pin' | 'life-time' | 'load-board' | 'required-pogo-pin' | 'users' | 'settings' | 'data-management' | 'audit-logs';
 
 export default function Dashboard({ user, role, selectedFacility, onBackToFacility }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('product');
@@ -53,6 +55,7 @@ export default function Dashboard({ user, role, selectedFacility, onBackToFacili
     { id: 'pogo-pin', label: 'Pogo Pin', icon: Database, color: 'text-emerald-500' },
     { id: 'life-time', label: 'Life Time', icon: Clock, color: 'text-rose-500' },
     { id: 'load-board', label: 'Load Board', icon: Layers, color: 'text-indigo-500' },
+    { id: 'required-pogo-pin', label: 'Required Pogo Pin', icon: Calculator, color: 'text-teal-500' },
     { id: 'settings', label: 'Settings', icon: Settings, color: 'text-zinc-500' },
   ];
 
@@ -215,6 +218,7 @@ export default function Dashboard({ user, role, selectedFacility, onBackToFacili
               {activeTab === 'pogo-pin' && <PogoPinInfo isAdmin={isAdmin} selectedFacility={selectedFacility} />}
               {activeTab === 'life-time' && <LifeTimeInfo isAdmin={isAdmin} selectedFacility={selectedFacility} />}
               {activeTab === 'load-board' && <LoadBoardInfo isAdmin={isAdmin} selectedFacility={selectedFacility} />}
+              {activeTab === 'required-pogo-pin' && <RequiredPogoPin selectedFacility={selectedFacility} />}
               {activeTab === 'data-management' && <DataManagement />}
               {activeTab === 'settings' && <SettingsTab />}
               {activeTab === 'users' && <UserManagement />}

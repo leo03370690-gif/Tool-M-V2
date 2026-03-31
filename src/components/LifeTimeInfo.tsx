@@ -27,7 +27,7 @@ export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: b
     const unsubscribe = onSnapshot(q, (snapshot) => {
       let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LifeTime));
       if (selectedFacility !== 'ALL') {
-        data = data.filter(r => r.facility === selectedFacility);
+        data = data.filter(r => (r.facility || '').trim().toUpperCase() === selectedFacility);
       }
       data.sort((a, b) => (a.socketGroup || '').localeCompare(b.socketGroup || ''));
       setRecords(data);

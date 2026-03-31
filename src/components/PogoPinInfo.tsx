@@ -23,7 +23,7 @@ export default function PogoPinInfo({ isAdmin, selectedFacility }: { isAdmin: bo
     const unsubscribe = onSnapshot(q, (snapshot) => {
       let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PogoPin));
       if (selectedFacility !== 'ALL') {
-        data = data.filter(p => p.facility === selectedFacility);
+        data = data.filter(p => (p.facility || '').trim().toUpperCase() === selectedFacility);
       }
       data.sort((a, b) => (a.pinPn || '').localeCompare(b.pinPn || ''));
       setPins(data);

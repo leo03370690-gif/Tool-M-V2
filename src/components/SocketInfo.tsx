@@ -48,7 +48,7 @@ export default function SocketInfo({ isAdmin, selectedFacility }: { isAdmin: boo
     const unsubscribe = onSnapshot(q, (snapshot) => {
       let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Socket));
       if (selectedFacility !== 'ALL') {
-        data = data.filter(s => s.facility === selectedFacility);
+        data = data.filter(s => (s.facility || '').trim().toUpperCase() === selectedFacility);
       }
       data.sort((a, b) => (a.toolsId || '').localeCompare(b.toolsId || ''));
       setSockets(data);

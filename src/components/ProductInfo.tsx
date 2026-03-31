@@ -42,7 +42,7 @@ export default function ProductInfo({ isAdmin, selectedFacility }: { isAdmin: bo
     const unsubscribe = onSnapshot(q, (snapshot) => {
       let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
       if (selectedFacility !== 'ALL') {
-        data = data.filter(p => p.facility === selectedFacility);
+        data = data.filter(p => (p.facility || '').trim().toUpperCase() === selectedFacility);
       }
       data.sort((a, b) => (a.device || '').localeCompare(b.device || ''));
       setProducts(data);
@@ -288,6 +288,7 @@ function DeviceDetailsModal({ device, products, onClose }: { device: string, pro
   const [socketsData, setSocketsData] = useState<any[]>([]);
   const [kitsData, setKitsData] = useState<any[]>([]);
   const [loadBoardsData, setLoadBoardsData] = useState<any[]>([]);
+  const [lifeTimesData, setLifeTimesData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -300,6 +301,9 @@ function DeviceDetailsModal({ device, products, onClose }: { device: string, pro
     const unsubLoadBoards = onSnapshot(collection(db, 'loadBoards'), (snapshot) => {
       setLoadBoardsData(snapshot.docs.map(doc => doc.data()));
     });
+    const unsubLifeTimes = onSnapshot(collection(db, 'lifeTimes'), (snapshot) => {
+      setLifeTimesData(snapshot.docs.map(doc => doc.data()));
+    });
 
     const timer = setTimeout(() => setLoading(false), 500);
 
@@ -307,6 +311,7 @@ function DeviceDetailsModal({ device, products, onClose }: { device: string, pro
       unsubSockets();
       unsubKits();
       unsubLoadBoards();
+      unsubLifeTimes();
       clearTimeout(timer);
     };
   }, []);
@@ -347,43 +352,144 @@ function DeviceDetailsModal({ device, products, onClose }: { device: string, pro
                 insertions.map(insertion => {
                   const insertionProducts = products.filter(p => p.insertion === insertion);
                   
-                  const socketGroups = new Set(insertionProducts.flatMap(p => [p.socketName1, p.socketName2]).filter(Boolean));
+                  const socket1Names = Array.from(new Set(insertionProducts.map(p => p.socketName1).filter(Boolean)));
+                  const socket2Names = Array.from(new Set(insertionProducts.map(p => p.socketName2).filter(Boolean)));
                   const kitGroups = new Set(insertionProducts.map(p => p.changeKitGroup).filter(Boolean));
                   const lbGroups = new Set(insertionProducts.map(p => p.lbGroup).filter(Boolean));
-
-                  const socketCount = socketsData.filter(s => {
-                    const fac = (s.facility || '').trim().toUpperCase();
-                    const loc = (s.location || '').trim().toUpperCase();
-                    return fac === loc && loc && socketGroups.has(s.socketGroupPin1);
-                  }).length;
-                  
-                  const kitCount = kitsData.filter(k => {
-                    const fac = (k.facility || '').trim().toUpperCase();
-                    const loc = (k.location || '').trim().toUpperCase();
-                    return fac === loc && loc && kitGroups.has(k.changeKitGroup);
-                  }).length;
-                  
-                  const lbCount = loadBoardsData.filter(lb => {
-                    const fac = (lb.facility || '').trim().toUpperCase();
-                    const loc = (lb.location || '').trim().toUpperCase();
-                    return fac === loc && loc && lbGroups.has(lb.lbGroup);
-                  }).length;
 
                   return (
                     <div key={insertion} className="rounded-2xl border border-zinc-100 bg-zinc-50/50 p-5">
                       <h4 className="mb-4 text-lg font-bold text-zinc-900">{insertion}</h4>
                       <div className="grid grid-cols-3 gap-4">
                         <div className="rounded-xl bg-white p-4 shadow-sm border border-zinc-100">
-                          <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1">Sockets</div>
-                          <div className="text-2xl font-light text-brand-primary">{socketCount}</div>
+                          <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">Sockets</div>
+                          <div className="space-y-3">
+                            {socket1Names.map(name => {
+                              const count = socketsData.filter(s => {
+                                const fac = (s.facility || '').trim().toUpperCase();
+                                const loc = (s.location || '').trim().toUpperCase();
+                                return fac === loc && loc && s.socketGroupPin1 === name;
+                              }).length;
+                              const relatedLifeTimes = lifeTimesData.filter(lt => lt.socketGroup === name);
+                              return (
+                                <div key={`s1-${name}`} className="flex flex-col gap-2 border-b border-zinc-100 pb-3 last:border-0 last:pb-0">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-zinc-700 truncate pr-2" title={name}>
+                                      {name} <span className="text-xs text-zinc-400 font-normal">(Name1)</span>
+                                    </span>
+                                    <span className="text-lg font-light text-brand-primary">{count}</span>
+                                  </div>
+                                  {relatedLifeTimes.length > 0 && (
+                                    <div className="space-y-2 mt-1">
+                                      {relatedLifeTimes.map((lt, idx) => (
+                                        <div key={idx} className="bg-zinc-50/80 rounded p-2 text-[11px] space-y-1 border border-zinc-100">
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-zinc-500">Pogo Pin:</span>
+                                            <span className="font-medium text-zinc-900">{lt.pogoPin1Pn || '-'}</span>
+                                          </div>
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-zinc-500">Req Q'ty:</span>
+                                            <span className="font-medium text-zinc-900">{lt.pogoPinQty || '-'}</span>
+                                          </div>
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-zinc-500">Life Time:</span>
+                                            <span className="font-medium text-zinc-900">{lt.lifeTime || '-'}</span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                            {socket2Names.map(name => {
+                              const count = socketsData.filter(s => {
+                                const fac = (s.facility || '').trim().toUpperCase();
+                                const loc = (s.location || '').trim().toUpperCase();
+                                return fac === loc && loc && s.socketGroupPin1 === name;
+                              }).length;
+                              const relatedLifeTimes = lifeTimesData.filter(lt => lt.socketGroup === name);
+                              return (
+                                <div key={`s2-${name}`} className="flex flex-col gap-2 border-b border-zinc-100 pb-3 last:border-0 last:pb-0">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-zinc-700 truncate pr-2" title={name}>
+                                      {name} <span className="text-xs text-zinc-400 font-normal">(Name2)</span>
+                                    </span>
+                                    <span className="text-lg font-light text-brand-primary">{count}</span>
+                                  </div>
+                                  {relatedLifeTimes.length > 0 && (
+                                    <div className="space-y-2 mt-1">
+                                      {relatedLifeTimes.map((lt, idx) => (
+                                        <div key={idx} className="bg-zinc-50/80 rounded p-2 text-[11px] space-y-1 border border-zinc-100">
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-zinc-500">Pogo Pin:</span>
+                                            <span className="font-medium text-zinc-900">{lt.pogoPin1Pn || '-'}</span>
+                                          </div>
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-zinc-500">Req Q'ty:</span>
+                                            <span className="font-medium text-zinc-900">{lt.pogoPinQty || '-'}</span>
+                                          </div>
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-zinc-500">Life Time:</span>
+                                            <span className="font-medium text-zinc-900">{lt.lifeTime || '-'}</span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                            {socket1Names.length === 0 && socket2Names.length === 0 && (
+                              <div className="text-2xl font-light text-brand-primary">0</div>
+                            )}
+                          </div>
                         </div>
                         <div className="rounded-xl bg-white p-4 shadow-sm border border-zinc-100">
-                          <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1">Change Kits</div>
-                          <div className="text-2xl font-light text-brand-primary">{kitCount}</div>
+                          <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">Change Kits</div>
+                          <div className="space-y-3">
+                            {Array.from(kitGroups).map(name => {
+                              const count = kitsData.filter(k => {
+                                const fac = (k.facility || '').trim().toUpperCase();
+                                const loc = (k.location || '').trim().toUpperCase();
+                                return fac === loc && loc && k.changeKitGroup === name;
+                              }).length;
+                              return (
+                                <div key={`kit-${name}`} className="flex items-center justify-between border-b border-zinc-100 pb-3 last:border-0 last:pb-0">
+                                  <span className="text-sm font-medium text-zinc-700 truncate pr-2" title={name}>
+                                    {name}
+                                  </span>
+                                  <span className="text-lg font-light text-brand-primary">{count}</span>
+                                </div>
+                              );
+                            })}
+                            {kitGroups.size === 0 && (
+                              <div className="text-2xl font-light text-brand-primary">0</div>
+                            )}
+                          </div>
                         </div>
                         <div className="rounded-xl bg-white p-4 shadow-sm border border-zinc-100">
-                          <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1">Load Boards</div>
-                          <div className="text-2xl font-light text-brand-primary">{lbCount}</div>
+                          <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">Load Boards</div>
+                          <div className="space-y-3">
+                            {Array.from(lbGroups).map(name => {
+                              const count = loadBoardsData.filter(lb => {
+                                const fac = (lb.facility || '').trim().toUpperCase();
+                                const loc = (lb.location || '').trim().toUpperCase();
+                                return fac === loc && loc && lb.lbGroup === name;
+                              }).length;
+                              return (
+                                <div key={`lb-${name}`} className="flex items-center justify-between border-b border-zinc-100 pb-3 last:border-0 last:pb-0">
+                                  <span className="text-sm font-medium text-zinc-700 truncate pr-2" title={name}>
+                                    {name}
+                                  </span>
+                                  <span className="text-lg font-light text-brand-primary">{count}</span>
+                                </div>
+                              );
+                            })}
+                            {lbGroups.size === 0 && (
+                              <div className="text-2xl font-light text-brand-primary">0</div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

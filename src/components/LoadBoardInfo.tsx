@@ -34,7 +34,7 @@ export default function LoadBoardInfo({ isAdmin, selectedFacility }: { isAdmin: 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LoadBoard));
       if (selectedFacility !== 'ALL') {
-        data = data.filter(lb => lb.facility === selectedFacility);
+        data = data.filter(lb => (lb.facility || '').trim().toUpperCase() === selectedFacility);
       }
       data.sort((a, b) => (a.projectName || '').localeCompare(b.projectName || ''));
       setLoadBoards(data);
