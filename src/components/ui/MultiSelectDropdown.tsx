@@ -17,21 +17,24 @@ export function MultiSelectDropdown({ values, onChange, options, placeholder }: 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredOptions = options.filter(opt => opt.toLowerCase().includes(search.toLowerCase()));
+  const filteredOptions = options.filter(opt => 
+    String(opt).toLowerCase().includes(search.toLowerCase())
+  );
 
   const toggleOption = (opt: string) => {
-    if (values.includes(opt)) {
-      onChange(values.filter(v => v !== opt));
+    const optStr = String(opt);
+    if (values.includes(optStr)) {
+      onChange(values.filter(v => v !== optStr));
     } else {
-      onChange([...values, opt]);
+      onChange([...values, optStr]);
     }
   };
 
   const displayValue = values.length === 0 
     ? placeholder 
     : values.length === 1 
-      ? values[0] 
-      : `${values[0]} (+${values.length - 1})`;
+      ? String(values[0]) 
+      : `${String(values[0])} (+${values.length - 1})`;
 
   return (
     <div className="relative" ref={ref}>

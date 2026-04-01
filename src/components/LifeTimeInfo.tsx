@@ -54,17 +54,17 @@ export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: b
     }
   };
 
-  const uniqueSocketGroups = React.useMemo(() => Array.from(new Set(records.map(r => r.socketGroup).filter(Boolean))).sort(), [records]);
-  const uniquePogoPin1Pns = React.useMemo(() => Array.from(new Set(records.map(r => r.pogoPin1Pn).filter(Boolean))).sort(), [records]);
-  const uniqueLoadBoardGroups = React.useMemo(() => Array.from(new Set(records.map(r => r.loadBoardGroup).filter(Boolean))).sort(), [records]);
+  const uniqueSocketGroups = React.useMemo(() => Array.from(new Set(records.map(r => String(r.socketGroup || '')).filter(Boolean))).sort(), [records]);
+  const uniquePogoPin1Pns = React.useMemo(() => Array.from(new Set(records.map(r => String(r.pogoPin1Pn || '')).filter(Boolean))).sort(), [records]);
+  const uniqueLoadBoardGroups = React.useMemo(() => Array.from(new Set(records.map(r => String(r.loadBoardGroup || '')).filter(Boolean))).sort(), [records]);
 
   const filteredRecords = records.filter(r => {
     const matchSearch = (r.socketGroup || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (r.pogoPin1Pn || '').toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchSocketGroup = filterSocketGroups.length === 0 || filterSocketGroups.includes(r.socketGroup);
-    const matchPogoPin1Pn = filterPogoPin1Pns.length === 0 || filterPogoPin1Pns.includes(r.pogoPin1Pn);
-    const matchLoadBoardGroup = filterLoadBoardGroups.length === 0 || filterLoadBoardGroups.includes(r.loadBoardGroup);
+    const matchSocketGroup = filterSocketGroups.length === 0 || filterSocketGroups.includes(String(r.socketGroup || ''));
+    const matchPogoPin1Pn = filterPogoPin1Pns.length === 0 || filterPogoPin1Pns.includes(String(r.pogoPin1Pn || ''));
+    const matchLoadBoardGroup = filterLoadBoardGroups.length === 0 || filterLoadBoardGroups.includes(String(r.loadBoardGroup || ''));
 
     return matchSearch && matchSocketGroup && matchPogoPin1Pn && matchLoadBoardGroup;
   });

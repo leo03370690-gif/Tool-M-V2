@@ -304,19 +304,19 @@ export default function RequiredPogoPin({ selectedFacility }: { selectedFacility
   const detailedSummaryData = React.useMemo(() => getDetailedSummary(), [getDetailedSummary]);
 
   const uniquePogoPins = React.useMemo(() => {
-    return Array.from(new Set(detailedSummaryData.map(g => g.pinName))).filter(Boolean).sort();
+    return Array.from(new Set(detailedSummaryData.map(g => String(g.pinName || '')))).filter(Boolean).sort();
   }, [detailedSummaryData]);
 
   const uniqueNicknames = React.useMemo(() => {
-    return Array.from(new Set(detailedSummaryData.flatMap(g => g.details.map(d => d.nickName)))).filter(Boolean).sort();
+    return Array.from(new Set(detailedSummaryData.flatMap(g => g.details.map(d => String(d.nickName || ''))))).filter(Boolean).sort();
   }, [detailedSummaryData]);
 
   const uniqueDevices = React.useMemo(() => {
-    return Array.from(new Set(detailedSummaryData.flatMap(g => g.details.map(d => d.device)))).filter(Boolean).sort();
+    return Array.from(new Set(detailedSummaryData.flatMap(g => g.details.map(d => String(d.device || ''))))).filter(Boolean).sort();
   }, [detailedSummaryData]);
 
   const uniqueInsertions = React.useMemo(() => {
-    return Array.from(new Set(detailedSummaryData.flatMap(g => g.details.map(d => d.insertion)))).filter(Boolean).sort();
+    return Array.from(new Set(detailedSummaryData.flatMap(g => g.details.map(d => String(d.insertion || ''))))).filter(Boolean).sort();
   }, [detailedSummaryData]);
 
   const filteredDetailedSummaryData = React.useMemo(() => {
@@ -324,19 +324,19 @@ export default function RequiredPogoPin({ selectedFacility }: { selectedFacility
 
     if (detailedSearchTerm.trim()) {
       const term = detailedSearchTerm.toLowerCase();
-      result = result.filter(group => group.pinName.toLowerCase().includes(term));
+      result = result.filter(group => String(group.pinName || '').toLowerCase().includes(term));
     }
 
     if (filterPogoPins.length > 0) {
-      result = result.filter(group => filterPogoPins.includes(group.pinName));
+      result = result.filter(group => filterPogoPins.includes(String(group.pinName || '')));
     }
 
     if (filterNicknames.length > 0 || filterDevices.length > 0 || filterInsertions.length > 0) {
       result = result.map(group => {
         const filteredDetails = group.details.filter(detail => {
-          const matchNickname = filterNicknames.length === 0 || filterNicknames.includes(detail.nickName);
-          const matchDevice = filterDevices.length === 0 || filterDevices.includes(detail.device);
-          const matchInsertion = filterInsertions.length === 0 || filterInsertions.includes(detail.insertion);
+          const matchNickname = filterNicknames.length === 0 || filterNicknames.includes(String(detail.nickName || ''));
+          const matchDevice = filterDevices.length === 0 || filterDevices.includes(String(detail.device || ''));
+          const matchInsertion = filterInsertions.length === 0 || filterInsertions.includes(String(detail.insertion || ''));
           return matchNickname && matchDevice && matchInsertion;
         });
         return { ...group, details: filteredDetails };

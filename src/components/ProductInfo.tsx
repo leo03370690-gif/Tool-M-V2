@@ -80,22 +80,22 @@ export default function ProductInfo({ isAdmin, selectedFacility }: { isAdmin: bo
     }
   };
 
-  const uniqueDevices = React.useMemo(() => Array.from(new Set(products.map(p => p.device).filter(Boolean))).sort(), [products]);
-  const uniqueProjectNames = React.useMemo(() => Array.from(new Set(products.map(p => p.projectName).filter(Boolean))).sort(), [products]);
-  const uniqueNicknames = React.useMemo(() => Array.from(new Set(products.map(p => p.nickname).filter(Boolean))).sort(), [products]);
-  const uniqueChangeKitGroups = React.useMemo(() => Array.from(new Set(products.map(p => p.changeKitGroup).filter(Boolean))).sort(), [products]);
-  const uniqueLBGroups = React.useMemo(() => Array.from(new Set(products.map(p => p.lbGroup).filter(Boolean))).sort(), [products]);
+  const uniqueDevices = React.useMemo(() => Array.from(new Set(products.map(p => String(p.device || '')).filter(Boolean))).sort(), [products]);
+  const uniqueProjectNames = React.useMemo(() => Array.from(new Set(products.map(p => String(p.projectName || '')).filter(Boolean))).sort(), [products]);
+  const uniqueNicknames = React.useMemo(() => Array.from(new Set(products.map(p => String(p.nickname || '')).filter(Boolean))).sort(), [products]);
+  const uniqueChangeKitGroups = React.useMemo(() => Array.from(new Set(products.map(p => String(p.changeKitGroup || '')).filter(Boolean))).sort(), [products]);
+  const uniqueLBGroups = React.useMemo(() => Array.from(new Set(products.map(p => String(p.lbGroup || '')).filter(Boolean))).sort(), [products]);
 
   const filteredProducts = products.filter(p => {
     const matchSearch = (p.device || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.projectName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.nickname || '').toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchDevice = filterDevices.length === 0 || filterDevices.includes(p.device);
-    const matchProjectName = filterProjectNames.length === 0 || filterProjectNames.includes(p.projectName);
-    const matchNickname = filterNicknames.length === 0 || filterNicknames.includes(p.nickname);
-    const matchChangeKitGroup = filterChangeKitGroups.length === 0 || filterChangeKitGroups.includes(p.changeKitGroup);
-    const matchLBGroup = filterLBGroups.length === 0 || filterLBGroups.includes(p.lbGroup);
+    const matchDevice = filterDevices.length === 0 || filterDevices.includes(String(p.device || ''));
+    const matchProjectName = filterProjectNames.length === 0 || filterProjectNames.includes(String(p.projectName || ''));
+    const matchNickname = filterNicknames.length === 0 || filterNicknames.includes(String(p.nickname || ''));
+    const matchChangeKitGroup = filterChangeKitGroups.length === 0 || filterChangeKitGroups.includes(String(p.changeKitGroup || ''));
+    const matchLBGroup = filterLBGroups.length === 0 || filterLBGroups.includes(String(p.lbGroup || ''));
 
     return matchSearch && matchDevice && matchProjectName && matchNickname && matchChangeKitGroup && matchLBGroup;
   });

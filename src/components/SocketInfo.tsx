@@ -79,21 +79,21 @@ export default function SocketInfo({ isAdmin, selectedFacility }: { isAdmin: boo
     }
   };
 
-  const uniqueSocketGroups = React.useMemo(() => Array.from(new Set(sockets.map(s => s.socketGroupPin1).filter(Boolean))).sort(), [sockets]);
-  const uniqueToolsIds = React.useMemo(() => Array.from(new Set(sockets.map(s => s.toolsId).filter(Boolean))).sort(), [sockets]);
-  const uniqueProjects = React.useMemo(() => Array.from(new Set(sockets.map(s => s.project).filter(Boolean))).sort(), [sockets]);
-  const uniqueStatuses = React.useMemo(() => Array.from(new Set(sockets.map(s => s.status).filter(Boolean))).sort(), [sockets]);
-  const uniquePogoPinPns = React.useMemo(() => Array.from(new Set(sockets.map(s => s.pogoPinPnPin1).filter(Boolean))).sort(), [sockets]);
+  const uniqueSocketGroups = React.useMemo(() => Array.from(new Set(sockets.map(s => String(s.socketGroupPin1 || '')).filter(Boolean))).sort(), [sockets]);
+  const uniqueToolsIds = React.useMemo(() => Array.from(new Set(sockets.map(s => String(s.toolsId || '')).filter(Boolean))).sort(), [sockets]);
+  const uniqueProjects = React.useMemo(() => Array.from(new Set(sockets.map(s => String(s.project || '')).filter(Boolean))).sort(), [sockets]);
+  const uniqueStatuses = React.useMemo(() => Array.from(new Set(sockets.map(s => String(s.status || '')).filter(Boolean))).sort(), [sockets]);
+  const uniquePogoPinPns = React.useMemo(() => Array.from(new Set(sockets.map(s => String(s.pogoPinPnPin1 || '')).filter(Boolean))).sort(), [sockets]);
 
   const filteredSockets = sockets.filter(s => {
     const matchSearch = (s.toolsId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.project || '').toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchSocketGroup = filterSocketGroups.length === 0 || filterSocketGroups.includes(s.socketGroupPin1);
-    const matchToolsId = filterToolsIds.length === 0 || filterToolsIds.includes(s.toolsId);
-    const matchProject = filterProjects.length === 0 || filterProjects.includes(s.project);
-    const matchStatus = filterStatuses.length === 0 || filterStatuses.includes(s.status);
-    const matchPogoPinPn = filterPogoPinPns.length === 0 || filterPogoPinPns.includes(s.pogoPinPnPin1);
+    const matchSocketGroup = filterSocketGroups.length === 0 || filterSocketGroups.includes(String(s.socketGroupPin1 || ''));
+    const matchToolsId = filterToolsIds.length === 0 || filterToolsIds.includes(String(s.toolsId || ''));
+    const matchProject = filterProjects.length === 0 || filterProjects.includes(String(s.project || ''));
+    const matchStatus = filterStatuses.length === 0 || filterStatuses.includes(String(s.status || ''));
+    const matchPogoPinPn = filterPogoPinPns.length === 0 || filterPogoPinPns.includes(String(s.pogoPinPnPin1 || ''));
 
     return matchSearch && matchSocketGroup && matchToolsId && matchProject && matchStatus && matchPogoPinPn;
   });

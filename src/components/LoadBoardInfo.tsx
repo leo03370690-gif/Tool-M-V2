@@ -71,20 +71,20 @@ export default function LoadBoardInfo({ isAdmin, selectedFacility }: { isAdmin: 
     }
   };
 
-  const uniqueProjectNames = React.useMemo(() => Array.from(new Set(loadBoards.map(lb => lb.projectName).filter(Boolean))).sort(), [loadBoards]);
-  const uniqueLBNames = React.useMemo(() => Array.from(new Set(loadBoards.map(lb => lb.lbName).filter(Boolean))).sort(), [loadBoards]);
-  const uniqueLBGroups = React.useMemo(() => Array.from(new Set(loadBoards.map(lb => lb.lbGroup).filter(Boolean))).sort(), [loadBoards]);
-  const uniqueLocations = React.useMemo(() => Array.from(new Set(loadBoards.map(lb => lb.location).filter(Boolean))).sort(), [loadBoards]);
+  const uniqueProjectNames = React.useMemo(() => Array.from(new Set(loadBoards.map(lb => String(lb.projectName || '')).filter(Boolean))).sort(), [loadBoards]);
+  const uniqueLBNames = React.useMemo(() => Array.from(new Set(loadBoards.map(lb => String(lb.lbName || '')).filter(Boolean))).sort(), [loadBoards]);
+  const uniqueLBGroups = React.useMemo(() => Array.from(new Set(loadBoards.map(lb => String(lb.lbGroup || '')).filter(Boolean))).sort(), [loadBoards]);
+  const uniqueLocations = React.useMemo(() => Array.from(new Set(loadBoards.map(lb => String(lb.location || '')).filter(Boolean))).sort(), [loadBoards]);
 
   const filteredLoadBoards = loadBoards.filter(lb => {
     const matchSearch = (lb.projectName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (lb.lbName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (lb.lbGroup || '').toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchProjectName = filterProjectNames.length === 0 || filterProjectNames.includes(lb.projectName);
-    const matchLBName = filterLBNames.length === 0 || filterLBNames.includes(lb.lbName);
-    const matchLBGroup = filterLBGroups.length === 0 || filterLBGroups.includes(lb.lbGroup);
-    const matchLocation = filterLocations.length === 0 || filterLocations.includes(lb.location);
+    const matchProjectName = filterProjectNames.length === 0 || filterProjectNames.includes(String(lb.projectName || ''));
+    const matchLBName = filterLBNames.length === 0 || filterLBNames.includes(String(lb.lbName || ''));
+    const matchLBGroup = filterLBGroups.length === 0 || filterLBGroups.includes(String(lb.lbGroup || ''));
+    const matchLocation = filterLocations.length === 0 || filterLocations.includes(String(lb.location || ''));
 
     return matchSearch && matchProjectName && matchLBName && matchLBGroup && matchLocation;
   });

@@ -56,17 +56,17 @@ export default function ChangeKitInfo({ isAdmin, selectedFacility }: { isAdmin: 
     }
   };
 
-  const uniqueToolsIds = React.useMemo(() => Array.from(new Set(kits.map(k => k.toolsId).filter(Boolean))).sort(), [kits]);
-  const uniqueChangeKitGroups = React.useMemo(() => Array.from(new Set(kits.map(k => k.changeKitGroup).filter(Boolean))).sort(), [kits]);
-  const uniqueStatuses = React.useMemo(() => Array.from(new Set(kits.map(k => k.status).filter(Boolean))).sort(), [kits]);
+  const uniqueToolsIds = React.useMemo(() => Array.from(new Set(kits.map(k => String(k.toolsId || '')).filter(Boolean))).sort(), [kits]);
+  const uniqueChangeKitGroups = React.useMemo(() => Array.from(new Set(kits.map(k => String(k.changeKitGroup || '')).filter(Boolean))).sort(), [kits]);
+  const uniqueStatuses = React.useMemo(() => Array.from(new Set(kits.map(k => String(k.status || '')).filter(Boolean))).sort(), [kits]);
 
   const filteredKits = kits.filter(k => {
     const matchSearch = (k.toolsId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (k.kind || '').toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchToolsId = filterToolsIds.length === 0 || filterToolsIds.includes(k.toolsId);
-    const matchChangeKitGroup = filterChangeKitGroups.length === 0 || filterChangeKitGroups.includes(k.changeKitGroup);
-    const matchStatus = filterStatuses.length === 0 || filterStatuses.includes(k.status);
+    const matchToolsId = filterToolsIds.length === 0 || filterToolsIds.includes(String(k.toolsId || ''));
+    const matchChangeKitGroup = filterChangeKitGroups.length === 0 || filterChangeKitGroups.includes(String(k.changeKitGroup || ''));
+    const matchStatus = filterStatuses.length === 0 || filterStatuses.includes(String(k.status || ''));
 
     return matchSearch && matchToolsId && matchChangeKitGroup && matchStatus;
   });
