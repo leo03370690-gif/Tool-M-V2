@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
-import { Plus, Trash2, Edit2, Search, Check, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, Check, X, Filter } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { MultiSelectDropdown } from './ui/MultiSelectDropdown';
 
 interface LifeTime {
   id: string;
@@ -21,6 +22,10 @@ export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: b
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [modal, setModal] = useState<{isOpen: boolean, id: string | null}>({ isOpen: false, id: null });
+
+  const [filterSocketGroups, setFilterSocketGroups] = useState<string[]>([]);
+  const [filterPogoPin1Pns, setFilterPogoPin1Pns] = useState<string[]>([]);
+  const [filterLoadBoardGroups, setFilterLoadBoardGroups] = useState<string[]>([]);
 
   useEffect(() => {
     const q = query(collection(db, 'lifeTimes'));
@@ -49,10 +54,20 @@ export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: b
     }
   };
 
-  const filteredRecords = records.filter(r => 
-    (r.socketGroup || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (r.pogoPin1Pn || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const uniqueSocketGroups = React.useMemo(() => Array.from(new Set(records.map(r => r.socketGroup).filter(Boolean))).sort(), [records]);
+  const uniquePogoPin1Pns = React.useMemo(() => Array.from(new Set(records.map(r => r.pogoPin1Pn).filter(Boolean))).sort(), [records]);
+  const uniqueLoadBoardGroups = React.useMemo(() => Array.from(new Set(records.map(r => r.loadBoardGroup).filter(Boolean))).sort(), [records]);
+
+  const filteredRecords = records.filter(r => {
+    const matchSearch = (r.socketGroup || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (r.pogoPin1Pn || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchSocketGroup = filterSocketGroups.length === 0 || filterSocketGroups.includes(r.socketGroup);
+    const matchPogoPin1Pn = filterPogoPin1Pns.length === 0 || filterPogoPin1Pns.includes(r.pogoPin1Pn);
+    const matchLoadBoardGroup = filterLoadBoardGroups.length === 0 || filterLoadBoardGroups.includes(r.loadBoardGroup);
+
+    return matchSearch && matchSocketGroup && matchPogoPin1Pn && matchLoadBoardGroup;
+  });
 
   const columns = [
     { key: 'facility', label: 'Facility' },
@@ -71,7 +86,30 @@ export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: b
           <h2 className="font-serif text-3xl italic text-zinc-900">Life Time Info</h2>
           <p className="text-xs text-zinc-400 uppercase tracking-[0.2em] font-bold">Manage socket and pogo pin life cycle data</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap justify-end">
+          <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-xl px-2 py-1 shadow-sm">
+            <Filter className="h-4 w-4 text-zinc-400 ml-2" />
+            <MultiSelectDropdown
+              values={filterSocketGroups}
+              onChange={setFilterSocketGroups}
+              options={uniqueSocketGroups}
+              placeholder="All Socket Groups"
+            />
+            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
+            <MultiSelectDropdown
+              values={filterPogoPin1Pns}
+              onChange={setFilterPogoPin1Pns}
+              options={uniquePogoPin1Pns}
+              placeholder="All Pogo Pin 1 P/Ns"
+            />
+            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
+            <MultiSelectDropdown
+              values={filterLoadBoardGroups}
+              onChange={setFilterLoadBoardGroups}
+              options={uniqueLoadBoardGroups}
+              placeholder="All Load Board Groups"
+            />
+          </div>
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-primary transition-colors" />
             <input

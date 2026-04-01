@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
-import { Plus, Trash2, Edit2, Check, X, Search, BarChart2, List } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, Search, BarChart2, List, Filter } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { MultiSelectDropdown } from './ui/MultiSelectDropdown';
 
 interface LoadBoard {
   id: string;
@@ -26,6 +27,11 @@ export default function LoadBoardInfo({ isAdmin, selectedFacility }: { isAdmin: 
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'stats'>('list');
   const [newLoadBoard, setNewLoadBoard] = useState<Partial<LoadBoard>>({});
+
+  const [filterProjectNames, setFilterProjectNames] = useState<string[]>([]);
+  const [filterLBNames, setFilterLBNames] = useState<string[]>([]);
+  const [filterLBGroups, setFilterLBGroups] = useState<string[]>([]);
+  const [filterLocations, setFilterLocations] = useState<string[]>([]);
 
   const [modal, setModal] = useState<{isOpen: boolean, id: string | null}>({ isOpen: false, id: null });
 
@@ -65,11 +71,23 @@ export default function LoadBoardInfo({ isAdmin, selectedFacility }: { isAdmin: 
     }
   };
 
-  const filteredLoadBoards = loadBoards.filter(lb => 
-    (lb.projectName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (lb.lbName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (lb.lbGroup || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const uniqueProjectNames = React.useMemo(() => Array.from(new Set(loadBoards.map(lb => lb.projectName).filter(Boolean))).sort(), [loadBoards]);
+  const uniqueLBNames = React.useMemo(() => Array.from(new Set(loadBoards.map(lb => lb.lbName).filter(Boolean))).sort(), [loadBoards]);
+  const uniqueLBGroups = React.useMemo(() => Array.from(new Set(loadBoards.map(lb => lb.lbGroup).filter(Boolean))).sort(), [loadBoards]);
+  const uniqueLocations = React.useMemo(() => Array.from(new Set(loadBoards.map(lb => lb.location).filter(Boolean))).sort(), [loadBoards]);
+
+  const filteredLoadBoards = loadBoards.filter(lb => {
+    const matchSearch = (lb.projectName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (lb.lbName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (lb.lbGroup || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchProjectName = filterProjectNames.length === 0 || filterProjectNames.includes(lb.projectName);
+    const matchLBName = filterLBNames.length === 0 || filterLBNames.includes(lb.lbName);
+    const matchLBGroup = filterLBGroups.length === 0 || filterLBGroups.includes(lb.lbGroup);
+    const matchLocation = filterLocations.length === 0 || filterLocations.includes(lb.location);
+
+    return matchSearch && matchProjectName && matchLBName && matchLBGroup && matchLocation;
+  });
 
   const stats = loadBoards.reduce((acc, lb) => {
     // Only count if Location equals Facility
@@ -116,7 +134,37 @@ export default function LoadBoardInfo({ isAdmin, selectedFacility }: { isAdmin: 
           <h2 className="font-serif text-3xl italic text-zinc-900">Load Board Info</h2>
           <p className="text-xs text-zinc-400 uppercase tracking-[0.2em] font-bold">Track and manage load board inventory</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap justify-end">
+          <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-xl px-2 py-1 shadow-sm">
+            <Filter className="h-4 w-4 text-zinc-400 ml-2" />
+            <MultiSelectDropdown
+              values={filterProjectNames}
+              onChange={setFilterProjectNames}
+              options={uniqueProjectNames}
+              placeholder="All Project Names"
+            />
+            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
+            <MultiSelectDropdown
+              values={filterLBNames}
+              onChange={setFilterLBNames}
+              options={uniqueLBNames}
+              placeholder="All LB Names"
+            />
+            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
+            <MultiSelectDropdown
+              values={filterLBGroups}
+              onChange={setFilterLBGroups}
+              options={uniqueLBGroups}
+              placeholder="All LB Groups"
+            />
+            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
+            <MultiSelectDropdown
+              values={filterLocations}
+              onChange={setFilterLocations}
+              options={uniqueLocations}
+              placeholder="All Locations"
+            />
+          </div>
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-primary transition-colors" />
             <input

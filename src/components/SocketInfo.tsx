@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
-import { Plus, Trash2, Edit2, Check, X, Search, MoreHorizontal, BarChart2, List } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, Search, MoreHorizontal, BarChart2, List, Filter } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { MultiSelectDropdown } from './ui/MultiSelectDropdown';
 
 interface Socket {
   id: string;
@@ -43,6 +44,12 @@ export default function SocketInfo({ isAdmin, selectedFacility }: { isAdmin: boo
   const [modal, setModal] = useState<{isOpen: boolean, id: string | null}>({ isOpen: false, id: null });
   const [searchTerm, setSearchTerm] = useState('');
 
+  const [filterSocketGroups, setFilterSocketGroups] = useState<string[]>([]);
+  const [filterToolsIds, setFilterToolsIds] = useState<string[]>([]);
+  const [filterProjects, setFilterProjects] = useState<string[]>([]);
+  const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
+  const [filterPogoPinPns, setFilterPogoPinPns] = useState<string[]>([]);
+
   useEffect(() => {
     const q = query(collection(db, 'sockets'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -72,10 +79,24 @@ export default function SocketInfo({ isAdmin, selectedFacility }: { isAdmin: boo
     }
   };
 
-  const filteredSockets = sockets.filter(s => 
-    (s.toolsId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.project || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const uniqueSocketGroups = React.useMemo(() => Array.from(new Set(sockets.map(s => s.socketGroupPin1).filter(Boolean))).sort(), [sockets]);
+  const uniqueToolsIds = React.useMemo(() => Array.from(new Set(sockets.map(s => s.toolsId).filter(Boolean))).sort(), [sockets]);
+  const uniqueProjects = React.useMemo(() => Array.from(new Set(sockets.map(s => s.project).filter(Boolean))).sort(), [sockets]);
+  const uniqueStatuses = React.useMemo(() => Array.from(new Set(sockets.map(s => s.status).filter(Boolean))).sort(), [sockets]);
+  const uniquePogoPinPns = React.useMemo(() => Array.from(new Set(sockets.map(s => s.pogoPinPnPin1).filter(Boolean))).sort(), [sockets]);
+
+  const filteredSockets = sockets.filter(s => {
+    const matchSearch = (s.toolsId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.project || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchSocketGroup = filterSocketGroups.length === 0 || filterSocketGroups.includes(s.socketGroupPin1);
+    const matchToolsId = filterToolsIds.length === 0 || filterToolsIds.includes(s.toolsId);
+    const matchProject = filterProjects.length === 0 || filterProjects.includes(s.project);
+    const matchStatus = filterStatuses.length === 0 || filterStatuses.includes(s.status);
+    const matchPogoPinPn = filterPogoPinPns.length === 0 || filterPogoPinPns.includes(s.pogoPinPnPin1);
+
+    return matchSearch && matchSocketGroup && matchToolsId && matchProject && matchStatus && matchPogoPinPn;
+  });
 
   const stats = sockets.reduce((acc, socket) => {
     // Only count if Facility equals Location
@@ -130,7 +151,44 @@ export default function SocketInfo({ isAdmin, selectedFacility }: { isAdmin: boo
           <h2 className="font-serif text-3xl italic text-zinc-900">Socket Inventory</h2>
           <p className="text-xs text-zinc-400 uppercase tracking-[0.2em] font-bold">Monitor socket health and usage</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap justify-end">
+          <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-xl px-2 py-1 shadow-sm">
+            <Filter className="h-4 w-4 text-zinc-400 ml-2" />
+            <MultiSelectDropdown
+              values={filterSocketGroups}
+              onChange={setFilterSocketGroups}
+              options={uniqueSocketGroups}
+              placeholder="All Socket Groups"
+            />
+            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
+            <MultiSelectDropdown
+              values={filterToolsIds}
+              onChange={setFilterToolsIds}
+              options={uniqueToolsIds}
+              placeholder="All Tools IDs"
+            />
+            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
+            <MultiSelectDropdown
+              values={filterProjects}
+              onChange={setFilterProjects}
+              options={uniqueProjects}
+              placeholder="All Projects"
+            />
+            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
+            <MultiSelectDropdown
+              values={filterStatuses}
+              onChange={setFilterStatuses}
+              options={uniqueStatuses}
+              placeholder="All Statuses"
+            />
+            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
+            <MultiSelectDropdown
+              values={filterPogoPinPns}
+              onChange={setFilterPogoPinPns}
+              options={uniquePogoPinPns}
+              placeholder="All Pogo Pin P/Ns"
+            />
+          </div>
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-primary transition-colors" />
             <input

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
-import { Plus, Trash2, Edit2, Search, BarChart2, List, Check, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, BarChart2, List, Check, X, Filter } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { MultiSelectDropdown } from './ui/MultiSelectDropdown';
 
 interface ChangeKit {
   id: string;
@@ -23,6 +24,10 @@ export default function ChangeKitInfo({ isAdmin, selectedFacility }: { isAdmin: 
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'stats'>('list');
   const [modal, setModal] = useState<{isOpen: boolean, id: string | null}>({ isOpen: false, id: null });
+
+  const [filterToolsIds, setFilterToolsIds] = useState<string[]>([]);
+  const [filterChangeKitGroups, setFilterChangeKitGroups] = useState<string[]>([]);
+  const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
 
   useEffect(() => {
     const q = query(collection(db, 'changeKits'));
@@ -51,10 +56,20 @@ export default function ChangeKitInfo({ isAdmin, selectedFacility }: { isAdmin: 
     }
   };
 
-  const filteredKits = kits.filter(k => 
-    (k.toolsId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (k.kind || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const uniqueToolsIds = React.useMemo(() => Array.from(new Set(kits.map(k => k.toolsId).filter(Boolean))).sort(), [kits]);
+  const uniqueChangeKitGroups = React.useMemo(() => Array.from(new Set(kits.map(k => k.changeKitGroup).filter(Boolean))).sort(), [kits]);
+  const uniqueStatuses = React.useMemo(() => Array.from(new Set(kits.map(k => k.status).filter(Boolean))).sort(), [kits]);
+
+  const filteredKits = kits.filter(k => {
+    const matchSearch = (k.toolsId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (k.kind || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchToolsId = filterToolsIds.length === 0 || filterToolsIds.includes(k.toolsId);
+    const matchChangeKitGroup = filterChangeKitGroups.length === 0 || filterChangeKitGroups.includes(k.changeKitGroup);
+    const matchStatus = filterStatuses.length === 0 || filterStatuses.includes(k.status);
+
+    return matchSearch && matchToolsId && matchChangeKitGroup && matchStatus;
+  });
 
   const stats = kits.reduce((acc, kit) => {
     // Only count if Facility equals Location
@@ -91,7 +106,30 @@ export default function ChangeKitInfo({ isAdmin, selectedFacility }: { isAdmin: 
           <h2 className="font-serif text-3xl italic text-zinc-900">Change Kit Info</h2>
           <p className="text-xs text-zinc-400 uppercase tracking-[0.2em] font-bold">Manage change kit inventory and status</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap justify-end">
+          <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-xl px-2 py-1 shadow-sm">
+            <Filter className="h-4 w-4 text-zinc-400 ml-2" />
+            <MultiSelectDropdown
+              values={filterToolsIds}
+              onChange={setFilterToolsIds}
+              options={uniqueToolsIds}
+              placeholder="All Tools IDs"
+            />
+            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
+            <MultiSelectDropdown
+              values={filterChangeKitGroups}
+              onChange={setFilterChangeKitGroups}
+              options={uniqueChangeKitGroups}
+              placeholder="All Change Kit Groups"
+            />
+            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
+            <MultiSelectDropdown
+              values={filterStatuses}
+              onChange={setFilterStatuses}
+              options={uniqueStatuses}
+              placeholder="All Statuses"
+            />
+          </div>
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-primary transition-colors" />
             <input

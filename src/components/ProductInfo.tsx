@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
-import { Plus, Trash2, Edit2, Check, X, Search, MoreHorizontal } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, Search, MoreHorizontal, Filter } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { MultiSelectDropdown } from './ui/MultiSelectDropdown';
 
 interface Product {
   id: string;
@@ -34,6 +35,12 @@ export default function ProductInfo({ isAdmin, selectedFacility }: { isAdmin: bo
   const [searchTerm, setSearchTerm] = useState('');
   const [newProduct, setNewProduct] = useState<Partial<Product>>({});
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
+
+  const [filterDevices, setFilterDevices] = useState<string[]>([]);
+  const [filterProjectNames, setFilterProjectNames] = useState<string[]>([]);
+  const [filterNicknames, setFilterNicknames] = useState<string[]>([]);
+  const [filterChangeKitGroups, setFilterChangeKitGroups] = useState<string[]>([]);
+  const [filterLBGroups, setFilterLBGroups] = useState<string[]>([]);
 
   const [modal, setModal] = useState<{isOpen: boolean, id: string | null}>({ isOpen: false, id: null });
 
@@ -73,11 +80,25 @@ export default function ProductInfo({ isAdmin, selectedFacility }: { isAdmin: bo
     }
   };
 
-  const filteredProducts = products.filter(p => 
-    (p.device || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (p.projectName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (p.nickname || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const uniqueDevices = React.useMemo(() => Array.from(new Set(products.map(p => p.device).filter(Boolean))).sort(), [products]);
+  const uniqueProjectNames = React.useMemo(() => Array.from(new Set(products.map(p => p.projectName).filter(Boolean))).sort(), [products]);
+  const uniqueNicknames = React.useMemo(() => Array.from(new Set(products.map(p => p.nickname).filter(Boolean))).sort(), [products]);
+  const uniqueChangeKitGroups = React.useMemo(() => Array.from(new Set(products.map(p => p.changeKitGroup).filter(Boolean))).sort(), [products]);
+  const uniqueLBGroups = React.useMemo(() => Array.from(new Set(products.map(p => p.lbGroup).filter(Boolean))).sort(), [products]);
+
+  const filteredProducts = products.filter(p => {
+    const matchSearch = (p.device || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.projectName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.nickname || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchDevice = filterDevices.length === 0 || filterDevices.includes(p.device);
+    const matchProjectName = filterProjectNames.length === 0 || filterProjectNames.includes(p.projectName);
+    const matchNickname = filterNicknames.length === 0 || filterNicknames.includes(p.nickname);
+    const matchChangeKitGroup = filterChangeKitGroups.length === 0 || filterChangeKitGroups.includes(p.changeKitGroup);
+    const matchLBGroup = filterLBGroups.length === 0 || filterLBGroups.includes(p.lbGroup);
+
+    return matchSearch && matchDevice && matchProjectName && matchNickname && matchChangeKitGroup && matchLBGroup;
+  });
 
   const columns = [
     { key: 'facility', label: 'Facility' },
@@ -107,7 +128,44 @@ export default function ProductInfo({ isAdmin, selectedFacility }: { isAdmin: bo
           <h2 className="font-serif text-3xl italic text-zinc-900">Product Inventory</h2>
           <p className="text-xs text-zinc-400 uppercase tracking-[0.2em] font-bold">Manage your tooling assets</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap justify-end">
+          <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-xl px-2 py-1 shadow-sm">
+            <Filter className="h-4 w-4 text-zinc-400 ml-2" />
+            <MultiSelectDropdown
+              values={filterDevices}
+              onChange={setFilterDevices}
+              options={uniqueDevices}
+              placeholder="All Devices"
+            />
+            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
+            <MultiSelectDropdown
+              values={filterProjectNames}
+              onChange={setFilterProjectNames}
+              options={uniqueProjectNames}
+              placeholder="All Project Names"
+            />
+            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
+            <MultiSelectDropdown
+              values={filterNicknames}
+              onChange={setFilterNicknames}
+              options={uniqueNicknames}
+              placeholder="All Nicknames"
+            />
+            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
+            <MultiSelectDropdown
+              values={filterChangeKitGroups}
+              onChange={setFilterChangeKitGroups}
+              options={uniqueChangeKitGroups}
+              placeholder="All Change Kit Groups"
+            />
+            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
+            <MultiSelectDropdown
+              values={filterLBGroups}
+              onChange={setFilterLBGroups}
+              options={uniqueLBGroups}
+              placeholder="All LB Groups"
+            />
+          </div>
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-primary transition-colors" />
             <input
