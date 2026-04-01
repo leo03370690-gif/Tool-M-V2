@@ -20,6 +20,75 @@ interface LoadBoard {
   targetReturnDate: string;
 }
 
+const LoadBoardRow = React.memo(({ 
+  lb, 
+  idx, 
+  columns, 
+  isAdmin, 
+  editingId, 
+  setEditingId, 
+  handleUpdate, 
+  setModal 
+}: { 
+  lb: LoadBoard, 
+  idx: number, 
+  columns: any[], 
+  isAdmin: boolean, 
+  editingId: string | null, 
+  setEditingId: (id: string | null) => void, 
+  handleUpdate: (id: string, data: any) => void, 
+  setModal: (modal: any) => void 
+}) => {
+  return (
+    <motion.tr 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(idx * 0.01, 0.5) }}
+      key={lb.id} 
+      className="group hover:bg-zinc-50/80 transition-colors"
+    >
+      {columns.map(col => (
+        <td key={col.key} className="px-6 py-4 text-zinc-600 whitespace-nowrap">
+          {editingId === lb.id ? (
+            <input
+              type="text"
+              defaultValue={lb[col.key as keyof LoadBoard] as string}
+              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all"
+              onBlur={(e) => handleUpdate(lb.id, { [col.key]: e.target.value })}
+              autoFocus={col.key === 'facility'}
+            />
+          ) : (
+            <span className={cn(
+              "font-medium",
+              col.key === 'lbName' ? "text-brand-primary font-bold" : "text-zinc-500"
+            )}>
+              {lb[col.key as keyof LoadBoard]}
+            </span>
+          )}
+        </td>
+      ))}
+      {isAdmin && (
+        <td className="px-6 py-4 text-right">
+          <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button 
+              onClick={() => setEditingId(lb.id)} 
+              className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-zinc-400 hover:text-brand-primary transition-all"
+            >
+              <Edit2 className="h-4 w-4" />
+            </button>
+            <button 
+              onClick={() => setModal({ isOpen: true, id: lb.id })} 
+              className="p-2 rounded-lg hover:bg-rose-50 text-zinc-400 hover:text-rose-600 transition-all"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        </td>
+      )}
+    </motion.tr>
+  );
+});
+
 export default function LoadBoardInfo({ isAdmin, selectedFacility }: { isAdmin: boolean, selectedFacility: string }) {
   const [loadBoards, setLoadBoards] = useState<LoadBoard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,35 +145,39 @@ export default function LoadBoardInfo({ isAdmin, selectedFacility }: { isAdmin: 
   const uniqueLBGroups = React.useMemo(() => Array.from(new Set(loadBoards.map(lb => String(lb.lbGroup || '')).filter(Boolean))).sort(), [loadBoards]);
   const uniqueLocations = React.useMemo(() => Array.from(new Set(loadBoards.map(lb => String(lb.location || '')).filter(Boolean))).sort(), [loadBoards]);
 
-  const filteredLoadBoards = loadBoards.filter(lb => {
-    const matchSearch = (lb.projectName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (lb.lbName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (lb.lbGroup || '').toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchProjectName = filterProjectNames.length === 0 || filterProjectNames.includes(String(lb.projectName || ''));
-    const matchLBName = filterLBNames.length === 0 || filterLBNames.includes(String(lb.lbName || ''));
-    const matchLBGroup = filterLBGroups.length === 0 || filterLBGroups.includes(String(lb.lbGroup || ''));
-    const matchLocation = filterLocations.length === 0 || filterLocations.includes(String(lb.location || ''));
+  const stats = React.useMemo(() => {
+    return loadBoards.reduce((acc, lb) => {
+      // Only count if Location equals Facility
+      const location = (lb.location || '').trim().toUpperCase();
+      const facility = (lb.facility || '').trim().toUpperCase();
+      
+      if (location !== facility || !facility) return acc;
 
-    return matchSearch && matchProjectName && matchLBName && matchLBGroup && matchLocation;
-  });
+      const displayFacility = lb.facility || 'Unknown';
+      const group = lb.lbGroup || 'Unknown';
+      
+      if (!acc[displayFacility]) acc[displayFacility] = {};
+      if (!acc[displayFacility][group]) acc[displayFacility][group] = 0;
+      acc[displayFacility][group]++;
+      
+      return acc;
+    }, {} as Record<string, Record<string, number>>);
+  }, [loadBoards]);
 
-  const stats = loadBoards.reduce((acc, lb) => {
-    // Only count if Location equals Facility
-    const location = (lb.location || '').trim().toUpperCase();
-    const facility = (lb.facility || '').trim().toUpperCase();
-    
-    if (location !== facility || !facility) return acc;
+  const filteredLoadBoards = React.useMemo(() => {
+    return loadBoards.filter(lb => {
+      const matchSearch = (lb.projectName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (lb.lbName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (lb.lbGroup || '').toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchProjectName = filterProjectNames.length === 0 || filterProjectNames.includes(String(lb.projectName || ''));
+      const matchLBName = filterLBNames.length === 0 || filterLBNames.includes(String(lb.lbName || ''));
+      const matchLBGroup = filterLBGroups.length === 0 || filterLBGroups.includes(String(lb.lbGroup || ''));
+      const matchLocation = filterLocations.length === 0 || filterLocations.includes(String(lb.location || ''));
 
-    const displayFacility = lb.facility || 'Unknown';
-    const group = lb.lbGroup || 'Unknown';
-    
-    if (!acc[displayFacility]) acc[displayFacility] = {};
-    if (!acc[displayFacility][group]) acc[displayFacility][group] = 0;
-    acc[displayFacility][group]++;
-    
-    return acc;
-  }, {} as Record<string, Record<string, number>>);
+      return matchSearch && matchProjectName && matchLBName && matchLBGroup && matchLocation;
+    });
+  }, [loadBoards, searchTerm, filterProjectNames, filterLBNames, filterLBGroups, filterLocations]);
 
   const columns = [
     { key: 'facility', label: 'Facility' },
@@ -260,54 +333,26 @@ export default function LoadBoardInfo({ isAdmin, selectedFacility }: { isAdmin: 
                       </td>
                     </motion.tr>
                   )}
-                  {filteredLoadBoards.map((lb, idx) => (
-                    <motion.tr 
-                      layout
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.01 }}
-                      key={lb.id} 
-                      className="group hover:bg-zinc-50/80 transition-colors"
-                    >
-                      {columns.map(col => (
-                        <td key={col.key} className="px-6 py-4 text-zinc-600 whitespace-nowrap">
-                          {editingId === lb.id ? (
-                            <input
-                              type="text"
-                              defaultValue={lb[col.key as keyof LoadBoard] as string}
-                              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all"
-                              onBlur={(e) => handleUpdate(lb.id, { [col.key]: e.target.value })}
-                            />
-                          ) : (
-                            <span className={cn(
-                              "font-medium",
-                              col.key === 'lbName' ? "text-brand-primary font-bold" : "text-zinc-500"
-                            )}>
-                              {lb[col.key as keyof LoadBoard]}
-                            </span>
-                          )}
-                        </td>
-                      ))}
-                      {isAdmin && (
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button 
-                              onClick={() => setEditingId(lb.id)} 
-                              className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-zinc-400 hover:text-brand-primary transition-all"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
-                            <button 
-                              onClick={() => setModal({ isOpen: true, id: lb.id })} 
-                              className="p-2 rounded-lg hover:bg-rose-50 text-zinc-400 hover:text-rose-600 transition-all"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </motion.tr>
+                  {filteredLoadBoards.slice(0, 100).map((lb, idx) => (
+                    <LoadBoardRow
+                      key={lb.id}
+                      lb={lb}
+                      idx={idx}
+                      columns={columns}
+                      isAdmin={isAdmin}
+                      editingId={editingId}
+                      setEditingId={setEditingId}
+                      handleUpdate={handleUpdate}
+                      setModal={setModal}
+                    />
                   ))}
+                  {filteredLoadBoards.length > 100 && (
+                    <tr>
+                      <td colSpan={columns.length + (isAdmin ? 1 : 0)} className="px-6 py-8 text-center text-zinc-400 italic">
+                        Showing first 100 of {filteredLoadBoards.length} load boards. Use filters to narrow down results.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

@@ -36,6 +36,83 @@ interface Socket {
   pnPcb: string;
 }
 
+const SocketRow = React.memo(({ 
+  socket, 
+  idx, 
+  columns, 
+  isAdmin, 
+  editingId, 
+  setEditingId, 
+  handleUpdate, 
+  setModal 
+}: { 
+  socket: Socket, 
+  idx: number, 
+  columns: any[], 
+  isAdmin: boolean, 
+  editingId: string | null, 
+  setEditingId: (id: string | null) => void, 
+  handleUpdate: (id: string, data: any) => void, 
+  setModal: (modal: any) => void 
+}) => {
+  return (
+    <motion.tr 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(idx * 0.01, 0.5) }}
+      key={socket.id} 
+      className="group hover:bg-zinc-50/80 transition-colors"
+    >
+      {columns.map(col => (
+        <td key={col.key} className="px-6 py-4 text-zinc-600 whitespace-nowrap">
+          {editingId === socket.id ? (
+            <input
+              type={typeof socket[col.key as keyof Socket] === 'number' ? 'number' : 'text'}
+              defaultValue={socket[col.key as keyof Socket] as any}
+              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all"
+              onBlur={(e) => handleUpdate(socket.id, { [col.key]: typeof socket[col.key as keyof Socket] === 'number' ? Number(e.target.value) : e.target.value })}
+              autoFocus={col.key === 'toolsId'}
+            />
+          ) : (
+            <div className="flex items-center gap-3">
+              <span className={cn(
+                "font-medium",
+                col.key === 'toolsId' ? "text-brand-primary font-bold" : "text-zinc-500"
+              )}>
+                {socket[col.key as keyof Socket]}
+              </span>
+              {col.key.includes('Count') && columns.find(c => c.key === col.key.replace('Count', 'Limit')) && (
+                <div className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  (socket[col.key as keyof Socket] as number) / (socket[col.key.replace('Count', 'Limit') as keyof Socket] as number) > 0.7 ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" : "bg-emerald-500"
+                )} />
+              )}
+            </div>
+          )}
+        </td>
+      ))}
+      {isAdmin && (
+        <td className="px-6 py-4 text-right">
+          <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button 
+              onClick={() => setEditingId(socket.id)} 
+              className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-zinc-400 hover:text-brand-primary transition-all"
+            >
+              <Edit2 className="h-4 w-4" />
+            </button>
+            <button 
+              onClick={() => setModal({ isOpen: true, id: socket.id })} 
+              className="p-2 rounded-lg hover:bg-rose-50 text-zinc-400 hover:text-rose-600 transition-all"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        </td>
+      )}
+    </motion.tr>
+  );
+});
+
 export default function SocketInfo({ isAdmin, selectedFacility }: { isAdmin: boolean, selectedFacility: string }) {
   const [sockets, setSockets] = useState<Socket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,35 +162,39 @@ export default function SocketInfo({ isAdmin, selectedFacility }: { isAdmin: boo
   const uniqueStatuses = React.useMemo(() => Array.from(new Set(sockets.map(s => String(s.status || '')).filter(Boolean))).sort(), [sockets]);
   const uniquePogoPinPns = React.useMemo(() => Array.from(new Set(sockets.map(s => String(s.pogoPinPnPin1 || '')).filter(Boolean))).sort(), [sockets]);
 
-  const filteredSockets = sockets.filter(s => {
-    const matchSearch = (s.toolsId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (s.project || '').toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchSocketGroup = filterSocketGroups.length === 0 || filterSocketGroups.includes(String(s.socketGroupPin1 || ''));
-    const matchToolsId = filterToolsIds.length === 0 || filterToolsIds.includes(String(s.toolsId || ''));
-    const matchProject = filterProjects.length === 0 || filterProjects.includes(String(s.project || ''));
-    const matchStatus = filterStatuses.length === 0 || filterStatuses.includes(String(s.status || ''));
-    const matchPogoPinPn = filterPogoPinPns.length === 0 || filterPogoPinPns.includes(String(s.pogoPinPnPin1 || ''));
+  const stats = React.useMemo(() => {
+    return sockets.reduce((acc, socket) => {
+      // Only count if Facility equals Location
+      const facility = (socket.facility || '').trim().toUpperCase();
+      const location = (socket.location || '').trim().toUpperCase();
+      
+      if (facility !== location || !location) return acc;
 
-    return matchSearch && matchSocketGroup && matchToolsId && matchProject && matchStatus && matchPogoPinPn;
-  });
+      const displayLocation = socket.location || 'Unknown';
+      const group = socket.socketGroupPin1 || 'Unknown';
+      
+      if (!acc[displayLocation]) acc[displayLocation] = {};
+      if (!acc[displayLocation][group]) acc[displayLocation][group] = 0;
+      acc[displayLocation][group]++;
+      
+      return acc;
+    }, {} as Record<string, Record<string, number>>);
+  }, [sockets]);
 
-  const stats = sockets.reduce((acc, socket) => {
-    // Only count if Facility equals Location
-    const facility = (socket.facility || '').trim().toUpperCase();
-    const location = (socket.location || '').trim().toUpperCase();
-    
-    if (facility !== location || !location) return acc;
+  const filteredSockets = React.useMemo(() => {
+    return sockets.filter(s => {
+      const matchSearch = (s.toolsId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.project || '').toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchSocketGroup = filterSocketGroups.length === 0 || filterSocketGroups.includes(String(s.socketGroupPin1 || ''));
+      const matchToolsId = filterToolsIds.length === 0 || filterToolsIds.includes(String(s.toolsId || ''));
+      const matchProject = filterProjects.length === 0 || filterProjects.includes(String(s.project || ''));
+      const matchStatus = filterStatuses.length === 0 || filterStatuses.includes(String(s.status || ''));
+      const matchPogoPinPn = filterPogoPinPns.length === 0 || filterPogoPinPns.includes(String(s.pogoPinPnPin1 || ''));
 
-    const displayLocation = socket.location || 'Unknown';
-    const group = socket.socketGroupPin1 || 'Unknown';
-    
-    if (!acc[displayLocation]) acc[displayLocation] = {};
-    if (!acc[displayLocation][group]) acc[displayLocation][group] = 0;
-    acc[displayLocation][group]++;
-    
-    return acc;
-  }, {} as Record<string, Record<string, number>>);
+      return matchSearch && matchSocketGroup && matchToolsId && matchProject && matchStatus && matchPogoPinPn;
+    });
+  }, [sockets, searchTerm, filterSocketGroups, filterToolsIds, filterProjects, filterStatuses, filterPogoPinPns]);
 
   const columns = [
     { key: 'facility', label: 'Facility' },
@@ -263,63 +344,27 @@ export default function SocketInfo({ isAdmin, selectedFacility }: { isAdmin: boo
             </thead>
             <tbody className="divide-y divide-zinc-50">
               <AnimatePresence mode="popLayout">
-                {filteredSockets.map((socket, idx) => (
-                  <motion.tr 
-                    layout
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.01 }}
-                    key={socket.id} 
-                    className="group hover:bg-zinc-50/80 transition-colors"
-                  >
-                    {columns.map(col => (
-                      <td key={col.key} className="px-6 py-4 text-zinc-600 whitespace-nowrap">
-                        {editingId === socket.id ? (
-                          <input
-                            type={typeof socket[col.key as keyof Socket] === 'number' ? 'number' : 'text'}
-                            defaultValue={socket[col.key as keyof Socket] as any}
-                            className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all"
-                            onBlur={(e) => handleUpdate(socket.id, { [col.key]: typeof socket[col.key as keyof Socket] === 'number' ? Number(e.target.value) : e.target.value })}
-                          />
-                        ) : (
-                          <div className="flex items-center gap-3">
-                            <span className={cn(
-                              "font-medium",
-                              col.key === 'toolsId' ? "text-brand-primary font-bold" : "text-zinc-500"
-                            )}>
-                              {socket[col.key as keyof Socket]}
-                            </span>
-                            {col.key.includes('Count') && columns.find(c => c.key === col.key.replace('Count', 'Limit')) && (
-                              <div className={cn(
-                                "h-1.5 w-1.5 rounded-full",
-                                (socket[col.key as keyof Socket] as number) / (socket[col.key.replace('Count', 'Limit') as keyof Socket] as number) > 0.7 ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" : "bg-emerald-500"
-                              )} />
-                            )}
-                          </div>
-                        )}
-                      </td>
-                    ))}
-                    {isAdmin && (
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button 
-                            onClick={() => setEditingId(socket.id)} 
-                            className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-zinc-400 hover:text-brand-primary transition-all"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-                          <button 
-                            onClick={() => setModal({ isOpen: true, id: socket.id })} 
-                            className="p-2 rounded-lg hover:bg-rose-50 text-zinc-400 hover:text-rose-600 transition-all"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    )}
-                  </motion.tr>
+                {filteredSockets.slice(0, 100).map((socket, idx) => (
+                  <SocketRow
+                    key={socket.id}
+                    socket={socket}
+                    idx={idx}
+                    columns={columns}
+                    isAdmin={isAdmin}
+                    editingId={editingId}
+                    setEditingId={setEditingId}
+                    handleUpdate={handleUpdate}
+                    setModal={setModal}
+                  />
                 ))}
               </AnimatePresence>
+              {filteredSockets.length > 100 && (
+                <tr>
+                  <td colSpan={columns.length + (isAdmin ? 1 : 0)} className="px-6 py-8 text-center text-zinc-400 italic">
+                    Showing first 100 of {filteredSockets.length} sockets. Use filters to narrow down results.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

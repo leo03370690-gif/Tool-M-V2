@@ -28,6 +28,81 @@ interface Product {
   socketName2: string;
 }
 
+const ProductRow = React.memo(({ 
+  product, 
+  idx, 
+  columns, 
+  isAdmin, 
+  editingId, 
+  setEditingId, 
+  handleUpdate, 
+  setModal,
+  setSelectedDevice
+}: { 
+  product: Product, 
+  idx: number, 
+  columns: any[], 
+  isAdmin: boolean, 
+  editingId: string | null, 
+  setEditingId: (id: string | null) => void, 
+  handleUpdate: (id: string, data: any) => void, 
+  setModal: (modal: any) => void,
+  setSelectedDevice: (device: string) => void
+}) => {
+  return (
+    <motion.tr 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(idx * 0.01, 0.5) }}
+      key={product.id} 
+      className="group hover:bg-zinc-50/80 transition-colors"
+    >
+      {columns.map(col => (
+        <td key={col.key} className="px-6 py-4 text-zinc-600 whitespace-nowrap">
+          {editingId === product.id ? (
+            <input
+              type="text"
+              defaultValue={product[col.key as keyof Product] as string}
+              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all"
+              onBlur={(e) => handleUpdate(product.id, { [col.key]: e.target.value })}
+              autoFocus={col.key === 'facility'}
+            />
+          ) : col.key === 'device' ? (
+            <button
+              onClick={() => setSelectedDevice(product.device as string)}
+              className="font-bold text-brand-primary hover:underline"
+            >
+              {product.device}
+            </button>
+          ) : (
+            <span className="font-medium text-zinc-500">
+              {product[col.key as keyof Product]}
+            </span>
+          )}
+        </td>
+      ))}
+      {isAdmin && (
+        <td className="px-6 py-4 text-right">
+          <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button 
+              onClick={() => setEditingId(product.id)} 
+              className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-zinc-400 hover:text-brand-primary transition-all"
+            >
+              <Edit2 className="h-4 w-4" />
+            </button>
+            <button 
+              onClick={() => setModal({ isOpen: true, id: product.id })} 
+              className="p-2 rounded-lg hover:bg-rose-50 text-zinc-400 hover:text-rose-600 transition-all"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        </td>
+      )}
+    </motion.tr>
+  );
+});
+
 export default function ProductInfo({ isAdmin, selectedFacility }: { isAdmin: boolean, selectedFacility: string }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,19 +161,21 @@ export default function ProductInfo({ isAdmin, selectedFacility }: { isAdmin: bo
   const uniqueChangeKitGroups = React.useMemo(() => Array.from(new Set(products.map(p => String(p.changeKitGroup || '')).filter(Boolean))).sort(), [products]);
   const uniqueLBGroups = React.useMemo(() => Array.from(new Set(products.map(p => String(p.lbGroup || '')).filter(Boolean))).sort(), [products]);
 
-  const filteredProducts = products.filter(p => {
-    const matchSearch = (p.device || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.projectName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.nickname || '').toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchDevice = filterDevices.length === 0 || filterDevices.includes(String(p.device || ''));
-    const matchProjectName = filterProjectNames.length === 0 || filterProjectNames.includes(String(p.projectName || ''));
-    const matchNickname = filterNicknames.length === 0 || filterNicknames.includes(String(p.nickname || ''));
-    const matchChangeKitGroup = filterChangeKitGroups.length === 0 || filterChangeKitGroups.includes(String(p.changeKitGroup || ''));
-    const matchLBGroup = filterLBGroups.length === 0 || filterLBGroups.includes(String(p.lbGroup || ''));
+  const filteredProducts = React.useMemo(() => {
+    return products.filter(p => {
+      const matchSearch = (p.device || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (p.projectName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (p.nickname || '').toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchDevice = filterDevices.length === 0 || filterDevices.includes(String(p.device || ''));
+      const matchProjectName = filterProjectNames.length === 0 || filterProjectNames.includes(String(p.projectName || ''));
+      const matchNickname = filterNicknames.length === 0 || filterNicknames.includes(String(p.nickname || ''));
+      const matchChangeKitGroup = filterChangeKitGroups.length === 0 || filterChangeKitGroups.includes(String(p.changeKitGroup || ''));
+      const matchLBGroup = filterLBGroups.length === 0 || filterLBGroups.includes(String(p.lbGroup || ''));
 
-    return matchSearch && matchDevice && matchProjectName && matchNickname && matchChangeKitGroup && matchLBGroup;
-  });
+      return matchSearch && matchDevice && matchProjectName && matchNickname && matchChangeKitGroup && matchLBGroup;
+    });
+  }, [products, searchTerm, filterDevices, filterProjectNames, filterNicknames, filterChangeKitGroups, filterLBGroups]);
 
   const columns = [
     { key: 'facility', label: 'Facility' },
@@ -232,59 +309,28 @@ export default function ProductInfo({ isAdmin, selectedFacility }: { isAdmin: bo
                     </td>
                   </motion.tr>
                 )}
-                {filteredProducts.map((product, idx) => (
-                  <motion.tr 
-                    layout
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.02 }}
-                    key={product.id} 
-                    className="group hover:bg-zinc-50/80 transition-colors"
-                  >
-                    {columns.map(col => (
-                      <td key={col.key} className="px-6 py-4 text-zinc-600 whitespace-nowrap">
-                        {editingId === product.id ? (
-                          <input
-                            type="text"
-                            defaultValue={product[col.key as keyof Product] as string}
-                            className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all"
-                            onBlur={(e) => handleUpdate(product.id, { [col.key]: e.target.value })}
-                          />
-                        ) : col.key === 'device' ? (
-                          <button
-                            onClick={() => setSelectedDevice(product.device as string)}
-                            className="font-bold text-brand-primary hover:underline"
-                          >
-                            {product.device}
-                          </button>
-                        ) : (
-                          <span className="font-medium text-zinc-500">
-                            {product[col.key as keyof Product]}
-                          </span>
-                        )}
-                      </td>
-                    ))}
-                    {isAdmin && (
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button 
-                            onClick={() => setEditingId(product.id)} 
-                            className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-zinc-400 hover:text-brand-primary transition-all"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-                          <button 
-                            onClick={() => setModal({ isOpen: true, id: product.id })} 
-                            className="p-2 rounded-lg hover:bg-rose-50 text-zinc-400 hover:text-rose-600 transition-all"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    )}
-                  </motion.tr>
+                {filteredProducts.slice(0, 100).map((product, idx) => (
+                  <ProductRow
+                    key={product.id}
+                    product={product}
+                    idx={idx}
+                    columns={columns}
+                    isAdmin={isAdmin}
+                    editingId={editingId}
+                    setEditingId={setEditingId}
+                    handleUpdate={handleUpdate}
+                    setModal={setModal}
+                    setSelectedDevice={setSelectedDevice}
+                  />
                 ))}
               </AnimatePresence>
+              {filteredProducts.length > 100 && (
+                <tr>
+                  <td colSpan={columns.length + (isAdmin ? 1 : 0)} className="px-6 py-8 text-center text-zinc-400 italic">
+                    Showing first 100 of {filteredProducts.length} products. Use filters to narrow down results.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

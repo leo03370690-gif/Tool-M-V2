@@ -18,6 +18,75 @@ interface ChangeKit {
   idleTime: string;
 }
 
+const KitRow = React.memo(({ 
+  kit, 
+  idx, 
+  columns, 
+  isAdmin, 
+  editingId, 
+  setEditingId, 
+  handleUpdate, 
+  setModal 
+}: { 
+  kit: ChangeKit, 
+  idx: number, 
+  columns: any[], 
+  isAdmin: boolean, 
+  editingId: string | null, 
+  setEditingId: (id: string | null) => void, 
+  handleUpdate: (id: string, data: any) => void, 
+  setModal: (modal: any) => void 
+}) => {
+  return (
+    <motion.tr 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(idx * 0.01, 0.5) }}
+      key={kit.id} 
+      className="group hover:bg-zinc-50/80 transition-colors"
+    >
+      {columns.map(col => (
+        <td key={col.key} className="px-6 py-4 text-zinc-600 whitespace-nowrap">
+          {editingId === kit.id ? (
+            <input
+              type="text"
+              defaultValue={kit[col.key as keyof ChangeKit]}
+              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all"
+              onBlur={(e) => handleUpdate(kit.id, { [col.key]: e.target.value })}
+              autoFocus={col.key === 'facility'}
+            />
+          ) : (
+            <span className={cn(
+              "font-medium",
+              col.key === 'toolsId' ? "text-brand-primary font-bold" : "text-zinc-500"
+            )}>
+              {kit[col.key as keyof ChangeKit]}
+            </span>
+          )}
+        </td>
+      ))}
+      {isAdmin && (
+        <td className="px-6 py-4 text-right">
+          <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button 
+              onClick={() => setEditingId(kit.id)} 
+              className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-zinc-400 hover:text-brand-primary transition-all"
+            >
+              <Edit2 className="h-4 w-4" />
+            </button>
+            <button 
+              onClick={() => setModal({ isOpen: true, id: kit.id })} 
+              className="p-2 rounded-lg hover:bg-rose-50 text-zinc-400 hover:text-rose-600 transition-all"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        </td>
+      )}
+    </motion.tr>
+  );
+});
+
 export default function ChangeKitInfo({ isAdmin, selectedFacility }: { isAdmin: boolean, selectedFacility: string }) {
   const [kits, setKits] = useState<ChangeKit[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -60,33 +129,37 @@ export default function ChangeKitInfo({ isAdmin, selectedFacility }: { isAdmin: 
   const uniqueChangeKitGroups = React.useMemo(() => Array.from(new Set(kits.map(k => String(k.changeKitGroup || '')).filter(Boolean))).sort(), [kits]);
   const uniqueStatuses = React.useMemo(() => Array.from(new Set(kits.map(k => String(k.status || '')).filter(Boolean))).sort(), [kits]);
 
-  const filteredKits = kits.filter(k => {
-    const matchSearch = (k.toolsId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (k.kind || '').toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchToolsId = filterToolsIds.length === 0 || filterToolsIds.includes(String(k.toolsId || ''));
-    const matchChangeKitGroup = filterChangeKitGroups.length === 0 || filterChangeKitGroups.includes(String(k.changeKitGroup || ''));
-    const matchStatus = filterStatuses.length === 0 || filterStatuses.includes(String(k.status || ''));
+  const stats = React.useMemo(() => {
+    return kits.reduce((acc, kit) => {
+      // Only count if Facility equals Location
+      const facility = (kit.facility || '').trim().toUpperCase();
+      const location = (kit.location || '').trim().toUpperCase();
+      
+      if (facility !== location || !location) return acc;
 
-    return matchSearch && matchToolsId && matchChangeKitGroup && matchStatus;
-  });
+      const displayLocation = kit.location || 'Unknown';
+      const group = kit.changeKitGroup || 'Unknown';
+      
+      if (!acc[displayLocation]) acc[displayLocation] = {};
+      if (!acc[displayLocation][group]) acc[displayLocation][group] = 0;
+      acc[displayLocation][group]++;
+      
+      return acc;
+    }, {} as Record<string, Record<string, number>>);
+  }, [kits]);
 
-  const stats = kits.reduce((acc, kit) => {
-    // Only count if Facility equals Location
-    const facility = (kit.facility || '').trim().toUpperCase();
-    const location = (kit.location || '').trim().toUpperCase();
-    
-    if (facility !== location || !location) return acc;
+  const filteredKits = React.useMemo(() => {
+    return kits.filter(k => {
+      const matchSearch = (k.toolsId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (k.kind || '').toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchToolsId = filterToolsIds.length === 0 || filterToolsIds.includes(String(k.toolsId || ''));
+      const matchChangeKitGroup = filterChangeKitGroups.length === 0 || filterChangeKitGroups.includes(String(k.changeKitGroup || ''));
+      const matchStatus = filterStatuses.length === 0 || filterStatuses.includes(String(k.status || ''));
 
-    const displayLocation = kit.location || 'Unknown';
-    const group = kit.changeKitGroup || 'Unknown';
-    
-    if (!acc[displayLocation]) acc[displayLocation] = {};
-    if (!acc[displayLocation][group]) acc[displayLocation][group] = 0;
-    acc[displayLocation][group]++;
-    
-    return acc;
-  }, {} as Record<string, Record<string, number>>);
+      return matchSearch && matchToolsId && matchChangeKitGroup && matchStatus;
+    });
+  }, [kits, searchTerm, filterToolsIds, filterChangeKitGroups, filterStatuses]);
 
   const columns = [
     { key: 'facility', label: 'Facility' },
@@ -203,54 +276,26 @@ export default function ChangeKitInfo({ isAdmin, selectedFacility }: { isAdmin: 
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-50">
-                  {filteredKits.map((kit, idx) => (
-                    <motion.tr 
-                      layout
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.01 }}
-                      key={kit.id} 
-                      className="group hover:bg-zinc-50/80 transition-colors"
-                    >
-                      {columns.map(col => (
-                        <td key={col.key} className="px-6 py-4 text-zinc-600 whitespace-nowrap">
-                          {editingId === kit.id ? (
-                            <input
-                              type="text"
-                              defaultValue={kit[col.key as keyof ChangeKit]}
-                              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all"
-                              onBlur={(e) => handleUpdate(kit.id, { [col.key]: e.target.value })}
-                            />
-                          ) : (
-                            <span className={cn(
-                              "font-medium",
-                              col.key === 'toolsId' ? "text-brand-primary font-bold" : "text-zinc-500"
-                            )}>
-                              {kit[col.key as keyof ChangeKit]}
-                            </span>
-                          )}
-                        </td>
-                      ))}
-                      {isAdmin && (
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button 
-                              onClick={() => setEditingId(kit.id)} 
-                              className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-zinc-400 hover:text-brand-primary transition-all"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
-                            <button 
-                              onClick={() => setModal({ isOpen: true, id: kit.id })} 
-                              className="p-2 rounded-lg hover:bg-rose-50 text-zinc-400 hover:text-rose-600 transition-all"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </motion.tr>
+                  {filteredKits.slice(0, 100).map((kit, idx) => (
+                    <KitRow
+                      key={kit.id}
+                      kit={kit}
+                      idx={idx}
+                      columns={columns}
+                      isAdmin={isAdmin}
+                      editingId={editingId}
+                      setEditingId={setEditingId}
+                      handleUpdate={handleUpdate}
+                      setModal={setModal}
+                    />
                   ))}
+                  {filteredKits.length > 100 && (
+                    <tr>
+                      <td colSpan={columns.length + (isAdmin ? 1 : 0)} className="px-6 py-8 text-center text-zinc-400 italic">
+                        Showing first 100 of {filteredKits.length} kits. Use filters to narrow down results.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

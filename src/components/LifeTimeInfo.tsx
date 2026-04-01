@@ -17,6 +17,76 @@ interface LifeTime {
   remark: string;
 }
 
+const LifeTimeRow = React.memo(({ 
+  record, 
+  idx, 
+  columns, 
+  isAdmin, 
+  editingId, 
+  setEditingId, 
+  handleUpdate, 
+  setModal 
+}: { 
+  record: LifeTime, 
+  idx: number, 
+  columns: any[], 
+  isAdmin: boolean, 
+  editingId: string | null, 
+  setEditingId: (id: string | null) => void, 
+  handleUpdate: (id: string, data: any) => void, 
+  setModal: (modal: any) => void 
+}) => {
+  return (
+    <motion.tr 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ delay: Math.min(idx * 0.01, 0.5) }}
+      key={record.id} 
+      className="group hover:bg-zinc-50/80 transition-colors"
+    >
+      {columns.map(col => (
+        <td key={col.key} className="px-6 py-4 text-zinc-600 whitespace-nowrap">
+          {editingId === record.id ? (
+            <input
+              type={col.key === 'pogoPinQty' || col.key === 'lifeTime' ? 'number' : 'text'}
+              defaultValue={record[col.key as keyof LifeTime] as any}
+              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all"
+              onBlur={(e) => handleUpdate(record.id, { [col.key]: col.key === 'pogoPinQty' || col.key === 'lifeTime' ? Number(e.target.value) : e.target.value })}
+              autoFocus={col.key === 'facility'}
+            />
+          ) : (
+            <span className={cn(
+              "font-medium",
+              col.key === 'socketGroup' ? "text-brand-primary font-bold" : "text-zinc-500"
+            )}>
+              {record[col.key as keyof LifeTime]}
+            </span>
+          )}
+        </td>
+      ))}
+      {isAdmin && (
+        <td className="px-6 py-4 text-right">
+          <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button 
+              onClick={() => setEditingId(record.id)} 
+              className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-zinc-400 hover:text-brand-primary transition-all"
+            >
+              <Edit2 className="h-4 w-4" />
+            </button>
+            <button 
+              onClick={() => setModal({ isOpen: true, id: record.id })} 
+              className="p-2 rounded-lg hover:bg-rose-50 text-zinc-400 hover:text-rose-600 transition-all"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        </td>
+      )}
+    </motion.tr>
+  );
+});
+
 export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: boolean, selectedFacility: string }) {
   const [records, setRecords] = useState<LifeTime[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -58,16 +128,18 @@ export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: b
   const uniquePogoPin1Pns = React.useMemo(() => Array.from(new Set(records.map(r => String(r.pogoPin1Pn || '')).filter(Boolean))).sort(), [records]);
   const uniqueLoadBoardGroups = React.useMemo(() => Array.from(new Set(records.map(r => String(r.loadBoardGroup || '')).filter(Boolean))).sort(), [records]);
 
-  const filteredRecords = records.filter(r => {
-    const matchSearch = (r.socketGroup || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (r.pogoPin1Pn || '').toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchSocketGroup = filterSocketGroups.length === 0 || filterSocketGroups.includes(String(r.socketGroup || ''));
-    const matchPogoPin1Pn = filterPogoPin1Pns.length === 0 || filterPogoPin1Pns.includes(String(r.pogoPin1Pn || ''));
-    const matchLoadBoardGroup = filterLoadBoardGroups.length === 0 || filterLoadBoardGroups.includes(String(r.loadBoardGroup || ''));
+  const filteredRecords = React.useMemo(() => {
+    return records.filter(r => {
+      const matchSearch = (r.socketGroup || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (r.pogoPin1Pn || '').toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchSocketGroup = filterSocketGroups.length === 0 || filterSocketGroups.includes(String(r.socketGroup || ''));
+      const matchPogoPin1Pn = filterPogoPin1Pns.length === 0 || filterPogoPin1Pns.includes(String(r.pogoPin1Pn || ''));
+      const matchLoadBoardGroup = filterLoadBoardGroups.length === 0 || filterLoadBoardGroups.includes(String(r.loadBoardGroup || ''));
 
-    return matchSearch && matchSocketGroup && matchPogoPin1Pn && matchLoadBoardGroup;
-  });
+      return matchSearch && matchSocketGroup && matchPogoPin1Pn && matchLoadBoardGroup;
+    });
+  }, [records, searchTerm, filterSocketGroups, filterPogoPin1Pns, filterLoadBoardGroups]);
 
   const columns = [
     { key: 'facility', label: 'Facility' },
@@ -158,55 +230,26 @@ export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: b
             </thead>
             <tbody className="divide-y divide-zinc-50">
               <AnimatePresence mode="popLayout">
-                {filteredRecords.map((record, idx) => (
-                  <motion.tr 
-                    layout
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ delay: idx * 0.01 }}
-                    key={record.id} 
-                    className="group hover:bg-zinc-50/80 transition-colors"
-                  >
-                    {columns.map(col => (
-                      <td key={col.key} className="px-6 py-4 text-zinc-600 whitespace-nowrap">
-                        {editingId === record.id ? (
-                          <input
-                            type={col.key === 'pogoPinQty' || col.key === 'lifeTime' ? 'number' : 'text'}
-                            defaultValue={record[col.key as keyof LifeTime] as any}
-                            className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all"
-                            onBlur={(e) => handleUpdate(record.id, { [col.key]: col.key === 'pogoPinQty' || col.key === 'lifeTime' ? Number(e.target.value) : e.target.value })}
-                          />
-                        ) : (
-                          <span className={cn(
-                            "font-medium",
-                            col.key === 'socketGroup' ? "text-brand-primary font-bold" : "text-zinc-500"
-                          )}>
-                            {record[col.key as keyof LifeTime]}
-                          </span>
-                        )}
-                      </td>
-                    ))}
-                    {isAdmin && (
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button 
-                            onClick={() => setEditingId(record.id)} 
-                            className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-zinc-400 hover:text-brand-primary transition-all"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-                          <button 
-                            onClick={() => setModal({ isOpen: true, id: record.id })} 
-                            className="p-2 rounded-lg hover:bg-rose-50 text-zinc-400 hover:text-rose-600 transition-all"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    )}
-                  </motion.tr>
+                {filteredRecords.slice(0, 100).map((record, idx) => (
+                  <LifeTimeRow
+                    key={record.id}
+                    record={record}
+                    idx={idx}
+                    columns={columns}
+                    isAdmin={isAdmin}
+                    editingId={editingId}
+                    setEditingId={setEditingId}
+                    handleUpdate={handleUpdate}
+                    setModal={setModal}
+                  />
                 ))}
+                {filteredRecords.length > 100 && (
+                  <tr>
+                    <td colSpan={columns.length + (isAdmin ? 1 : 0)} className="px-6 py-8 text-center text-zinc-400 italic">
+                      Showing first 100 of {filteredRecords.length} records. Use filters to narrow down results.
+                    </td>
+                  </tr>
+                )}
               </AnimatePresence>
             </tbody>
           </table>
