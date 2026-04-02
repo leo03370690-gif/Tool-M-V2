@@ -509,6 +509,8 @@ export default function DataManagement() {
 
           await logAuditAction('Import Data', `Imported ${totalAdded} records across ${files.length} files. ${clearBeforeImport ? `Cleared ${totalDeleted} old records.` : ''}`);
 
+          sessionStorage.removeItem('cachedFacilities');
+
           setModal({
             isOpen: true,
             title: 'Batch Import Successful',
@@ -586,6 +588,8 @@ export default function DataManagement() {
 
           await logAuditAction('Clear Data', `Cleared ${totalDeleted} records from ${targetLabel}`);
 
+          sessionStorage.removeItem('cachedFacilities');
+
           setModal({
             isOpen: true,
             title: 'Clear Successful',
@@ -638,6 +642,8 @@ export default function DataManagement() {
           const totalDeleted = await clearByFacility(deleteFacility);
 
           await logAuditAction('Delete by Facility', `Deleted ${totalDeleted} records for facility ${deleteFacility}`);
+          
+          sessionStorage.removeItem('cachedFacilities');
 
           setModal({
             isOpen: true,

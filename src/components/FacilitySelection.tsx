@@ -13,20 +13,32 @@ export default function FacilitySelection({ onSelect }: { onSelect: (facility: s
   useEffect(() => {
     const fetchFacilities = async () => {
       try {
+        const cachedFacilities = sessionStorage.getItem('cachedFacilities');
+        if (cachedFacilities) {
+          setFacilities(JSON.parse(cachedFacilities));
+          setLoading(false);
+          return; // Skip fetching to save read operations and quota
+        }
+
         const collectionsToScan = ['products', 'sockets', 'changeKits', 'loadBoards', 'pogoPins', 'lifeTimes'];
         const uniqueFacilities = new Set<string>();
 
-        for (const colName of collectionsToScan) {
-          const snapshot = await getDocs(collection(db, colName));
+        const snapshots = await Promise.all(
+          collectionsToScan.map(colName => getDocs(collection(db, colName)))
+        );
+
+        snapshots.forEach(snapshot => {
           snapshot.docs.forEach(doc => {
             const fac = doc.data().facility;
             if (fac && typeof fac === 'string') {
               uniqueFacilities.add(fac.trim().toUpperCase());
             }
           });
-        }
+        });
 
-        setFacilities(Array.from(uniqueFacilities).sort());
+        const facilitiesList = Array.from(uniqueFacilities).sort();
+        setFacilities(facilitiesList);
+        sessionStorage.setItem('cachedFacilities', JSON.stringify(facilitiesList));
       } catch (error) {
         console.error("Error fetching facilities:", error);
       } finally {
