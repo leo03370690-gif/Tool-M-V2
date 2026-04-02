@@ -5,6 +5,7 @@ import { Plus, Trash2, Upload, FileSpreadsheet, Calculator, List, Eraser, Table,
 import * as XLSX from 'xlsx';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { DoubleScrollbar } from './ui/DoubleScrollbar';
 import { MultiSelectDropdown } from './ui/MultiSelectDropdown';
 
 interface RowData {
@@ -469,11 +470,11 @@ export default function RequiredPogoPin({ selectedFacility }: { selectedFacility
             </div>
           </div>
           
-          <div className="overflow-x-auto">
+          <DoubleScrollbar>
             <table className="w-full text-left text-sm text-zinc-600">
               <thead className="bg-zinc-50 text-xs uppercase text-zinc-500 border-b border-zinc-200">
                 <tr>
-                  <th className="px-4 py-3 font-medium">PartNo</th>
+                  <th className="px-4 py-3 font-medium sticky left-0 bg-zinc-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">PartNo</th>
                   <th className="px-4 py-3 font-medium w-32">Qty</th>
                   <th className="px-4 py-3 font-medium">Remark</th>
                   <th className="px-4 py-3 font-medium">Pogo pin1 need</th>
@@ -492,8 +493,8 @@ export default function RequiredPogoPin({ selectedFacility }: { selectedFacility
                   </tr>
                 ) : (
                   rows.map((row) => (
-                    <tr key={row.id} className="hover:bg-zinc-50/50 transition-colors">
-                      <td className="px-4 py-2">
+                    <tr key={row.id} className="hover:bg-zinc-50/50 transition-colors group">
+                      <td className="px-4 py-2 sticky left-0 bg-white group-hover:bg-zinc-50/50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] transition-colors">
                         <input
                           type="text"
                           value={row.partNo}
@@ -542,7 +543,7 @@ export default function RequiredPogoPin({ selectedFacility }: { selectedFacility
                 )}
               </tbody>
             </table>
-          </div>
+          </DoubleScrollbar>
         </motion.div>
       )}
 
@@ -652,11 +653,11 @@ export default function RequiredPogoPin({ selectedFacility }: { selectedFacility
               </div>
             </div>
           </div>
-          <div className="overflow-x-auto p-6">
+          <DoubleScrollbar className="p-6">
             <table className="w-full text-sm text-zinc-700 border-collapse">
               <thead className="bg-zinc-100 text-xs uppercase text-zinc-600 border-b border-zinc-300">
                 <tr>
-                  <th className="border border-zinc-300 px-3 py-2 font-medium text-left whitespace-nowrap cursor-pointer hover:bg-zinc-200 select-none" onClick={() => handleSort('pinName')}>
+                  <th className="border border-zinc-300 px-3 py-2 font-medium text-left whitespace-nowrap cursor-pointer hover:bg-zinc-200 select-none sticky left-0 bg-zinc-100 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]" onClick={() => handleSort('pinName')}>
                     <div className="flex items-center gap-1 justify-between">
                       <span>Pogo pin name</span>
                       <ArrowUpDown className={cn("h-3 w-3", sortConfig?.key === 'pinName' ? "text-brand-primary opacity-100" : "text-zinc-400 opacity-50")} />
@@ -735,8 +736,8 @@ export default function RequiredPogoPin({ selectedFacility }: { selectedFacility
                   filteredDetailedSummaryData.map((pinGroup, pinIndex) => {
                     if (pinGroup.details.length === 0) {
                       return (
-                        <tr key={pinGroup.pinName} className="hover:bg-zinc-50">
-                          <td className="border border-zinc-300 px-3 py-2 text-left font-medium">{pinGroup.pinName}</td>
+                        <tr key={pinGroup.pinName} className="hover:bg-zinc-50 group">
+                          <td className="border border-zinc-300 px-3 py-2 text-left font-medium sticky left-0 bg-white group-hover:bg-zinc-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] transition-colors">{pinGroup.pinName}</td>
                           <td className="border border-zinc-300 px-3 py-2 text-right font-bold text-red-600">{pinGroup.final.toLocaleString()}</td>
                           <td className="border border-zinc-300 px-3 py-2 text-right">{pinGroup.required.toLocaleString()}</td>
                           <td className="border border-zinc-300 px-3 py-2 text-right">{pinGroup.onHand.toLocaleString()}</td>
@@ -773,10 +774,10 @@ export default function RequiredPogoPin({ selectedFacility }: { selectedFacility
                       }
 
                       return (
-                        <tr key={`${pinGroup.pinName}-${detailIndex}`} className="hover:bg-zinc-50/50">
+                        <tr key={`${pinGroup.pinName}-${detailIndex}`} className="hover:bg-zinc-50/50 group">
                           {isFirstPin && (
                             <>
-                              <td className="border border-zinc-300 px-3 py-2 align-top text-left font-bold bg-yellow-100/50" rowSpan={pinGroup.details.length}>
+                              <td className="border border-zinc-300 px-3 py-2 align-top text-left font-bold bg-yellow-100/50 sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]" rowSpan={pinGroup.details.length}>
                                 <div className="flex items-center gap-1">
                                   <span className="text-zinc-400 text-xs">⊟</span>
                                   {pinGroup.pinName}
@@ -826,7 +827,7 @@ export default function RequiredPogoPin({ selectedFacility }: { selectedFacility
                 )}
               </tbody>
             </table>
-          </div>
+          </DoubleScrollbar>
         </motion.div>
       )}
 

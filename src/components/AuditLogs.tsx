@@ -3,6 +3,7 @@ import { db } from '../firebase';
 import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { Clock, User, Activity, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { DoubleScrollbar } from './ui/DoubleScrollbar';
 
 interface AuditLog {
   id: string;
@@ -73,11 +74,11 @@ export default function AuditLogs() {
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
+        <DoubleScrollbar>
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50/50 text-[11px] font-bold uppercase tracking-wider text-zinc-500">
               <tr>
-                <th className="px-6 py-4 border-b border-zinc-100">Time</th>
+                <th className="px-6 py-4 border-b border-zinc-100 sticky left-0 bg-zinc-50/50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Time</th>
                 <th className="px-6 py-4 border-b border-zinc-100">User</th>
                 <th className="px-6 py-4 border-b border-zinc-100">Action</th>
                 <th className="px-6 py-4 border-b border-zinc-100">Details</th>
@@ -94,7 +95,7 @@ export default function AuditLogs() {
                     exit={{ opacity: 0 }}
                     className="hover:bg-zinc-50/50 transition-colors group"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-zinc-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-zinc-500 sticky left-0 bg-white group-hover:bg-zinc-50/50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] transition-colors">
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4 opacity-40" />
                         <span className="font-mono text-[11px]">
@@ -134,7 +135,7 @@ export default function AuditLogs() {
               )}
             </tbody>
           </table>
-        </div>
+        </DoubleScrollbar>
       </div>
     </motion.div>
   );

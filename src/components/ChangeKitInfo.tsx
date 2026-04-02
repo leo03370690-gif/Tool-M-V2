@@ -4,6 +4,7 @@ import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, order
 import { Plus, Trash2, Edit2, Search, BarChart2, List, Check, X, Filter } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { DoubleScrollbar } from './ui/DoubleScrollbar';
 import { MultiSelectDropdown } from './ui/MultiSelectDropdown';
 
 interface ChangeKit {
@@ -45,8 +46,8 @@ const KitRow = React.memo(({
       key={kit.id} 
       className="group hover:bg-zinc-50/80 transition-colors"
     >
-      {columns.map(col => (
-        <td key={col.key} className="px-6 py-4 text-zinc-600 whitespace-nowrap">
+      {columns.map((col, i) => (
+        <td key={col.key} className={cn("px-6 py-4 text-zinc-600 whitespace-nowrap", i === 0 && "sticky left-0 bg-white group-hover:bg-zinc-50/80 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] transition-colors")}>
           {editingId === kit.id ? (
             <input
               type="text"
@@ -259,12 +260,12 @@ export default function ChangeKitInfo({ isAdmin, selectedFacility }: { isAdmin: 
             exit={{ opacity: 0, x: 20 }}
             className="relative overflow-hidden rounded-2xl border border-zinc-100 bg-white"
           >
-            <div className="overflow-x-auto">
+            <DoubleScrollbar>
               <table className="w-full text-left text-sm border-collapse">
                 <thead>
                   <tr className="bg-zinc-50/50">
-                    {columns.map(col => (
-                      <th key={col.key} className="px-6 py-4 border-b border-zinc-100">
+                    {columns.map((col, i) => (
+                      <th key={col.key} className={cn("px-6 py-4 border-b border-zinc-100", i === 0 && "sticky left-0 bg-zinc-50/50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]")}>
                         <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-400 font-sans">
                           {col.label}
                         </span>
@@ -298,7 +299,7 @@ export default function ChangeKitInfo({ isAdmin, selectedFacility }: { isAdmin: 
                   )}
                 </tbody>
               </table>
-            </div>
+            </DoubleScrollbar>
           </motion.div>
         ) : (
           <motion.div 
