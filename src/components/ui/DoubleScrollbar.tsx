@@ -23,16 +23,29 @@ export function DoubleScrollbar({ children, className }: DoubleScrollbarProps) {
     return () => observer.disconnect();
   }, [children]);
 
+  const isScrolling = useRef<'top' | 'bottom' | null>(null);
+
   const handleTopScroll = () => {
+    if (isScrolling.current === 'bottom') return;
+    isScrolling.current = 'top';
     if (bottomScrollRef.current && topScrollRef.current) {
       bottomScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
     }
+    // Reset after a short delay
+    setTimeout(() => {
+      if (isScrolling.current === 'top') isScrolling.current = null;
+    }, 50);
   };
 
   const handleBottomScroll = () => {
+    if (isScrolling.current === 'top') return;
+    isScrolling.current = 'bottom';
     if (topScrollRef.current && bottomScrollRef.current) {
       topScrollRef.current.scrollLeft = bottomScrollRef.current.scrollLeft;
     }
+    setTimeout(() => {
+      if (isScrolling.current === 'bottom') isScrolling.current = null;
+    }, 50);
   };
 
   return (
@@ -49,7 +62,7 @@ export function DoubleScrollbar({ children, className }: DoubleScrollbarProps) {
         className="overflow-x-auto overscroll-x-contain custom-scrollbar"
         onScroll={handleBottomScroll}
       >
-        <div ref={contentRef}>
+        <div ref={contentRef} className="w-max min-w-full">
           {children}
         </div>
       </div>

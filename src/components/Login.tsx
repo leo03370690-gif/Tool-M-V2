@@ -21,14 +21,17 @@ export default function Login() {
     setLoading(true);
     setError('');
 
-    const email = username.includes('@') ? username : `${username.toLowerCase()}@tooling.local`;
+    const trimmedUsername = username.trim();
+    const email = trimmedUsername.includes('@') ? trimmedUsername.toLowerCase() : `${trimmedUsername.toLowerCase().replace(/\s+/g, '.')}@tooling.local`;
+    
+    console.log(`Attempting login with email: ${email}`);
 
     try {
       let userCredential;
       try {
         userCredential = await signInWithEmailAndPassword(auth, email, password);
       } catch (err: any) {
-        if (username.toLowerCase() === 'leo.lo' && password === '123456') {
+        if (trimmedUsername.toLowerCase() === 'leo.lo' && password === '123456') {
           try {
             userCredential = await createUserWithEmailAndPassword(auth, email, password);
           } catch (createErr: any) {
@@ -42,7 +45,7 @@ export default function Login() {
         }
       }
 
-      const isDefaultAdmin = username.toLowerCase() === 'leo.lo' && password === '123456';
+      const isDefaultAdmin = trimmedUsername.toLowerCase() === 'leo.lo' && password === '123456';
       if (isDefaultAdmin && userCredential) {
         try {
           const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
@@ -62,10 +65,12 @@ export default function Login() {
     } catch (err: any) {
       if (err.code === 'resource-exhausted' || err.message?.includes('quota')) {
         setError('系統寫入配額已滿，暫時無法處理新用戶登入。請稍後再試。');
+      } else if (err.code === 'auth/invalid-credential') {
+        setError('帳號或密碼錯誤。如果您有設定自訂 Email，請使用 Email 登入。');
       } else {
-        setError('帳號或密碼錯誤');
+        setError('登入失敗：' + (err.message || '未知錯誤'));
       }
-      console.error(err);
+      console.error('Login error:', err);
     } finally {
       setLoading(false);
     }

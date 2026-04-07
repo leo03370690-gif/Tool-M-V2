@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { db, auth } from '../firebase';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { signOut } from 'firebase/auth';
-import { Plus, Trash2, UserPlus, Shield, User as UserIcon, Users, Edit2, Check, X, Loader2, Mail } from 'lucide-react';
+import { db, auth, firebaseConfig } from '../firebase';
+import { collection, onSnapshot, setDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, getAuth, signOut, setPersistence, inMemoryPersistence } from 'firebase/auth';
+import { initializeApp, deleteApp } from 'firebase/app';
+import { Plus, Trash2, UserPlus, Shield, User as UserIcon, Users, Edit2, Check, X, Loader2, Mail, AlertTriangle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { logAuditAction } from '../lib/audit';
 import { motion, AnimatePresence } from 'motion/react';
@@ -77,10 +78,9 @@ export default function UserManagement() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editRole, setEditRole] = useState<'admin' | 'user'>('user');
-  const [editEmail, setEditEmail] = useState('');
-  const [editPassword, setEditPassword] = useState('');
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [resettingId, setResettingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [deleteModal, setDeleteModal] = useState<{isOpen: boolean, id: string | null, username: string | null}>({ 
     isOpen: false, 
     id: null, 
@@ -101,38 +101,49 @@ export default function UserManagement() {
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
+    setSuccess(null);
     
+    let secondaryApp;
     try {
-      const email = newEmail || `${newUsername.toLowerCase()}@tooling.local`;
-      const idToken = await auth.currentUser?.getIdToken();
+      const email = newEmail.trim() || `${newUsername.trim().toLowerCase().replace(/\s+/g, '.')}@tooling.local`;
       
-      const response = await fetch('/api/admin/create-user', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify({
+      secondaryApp = initializeApp(firebaseConfig, 'SecondaryApp');
+      const secondaryAuth = getAuth(secondaryApp);
+      await setPersistence(secondaryAuth, inMemoryPersistence);
+      
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, newPassword);
+      await signOut(secondaryAuth);
+      
+      const path = `users/${userCredential.user.uid}`;
+      try {
+        await setDoc(doc(db, 'users', userCredential.user.uid), {
           username: newUsername,
           email: email,
-          password: newPassword,
-          role: newRole
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create user');
+          role: newRole,
+          createdAt: new Date().toISOString()
+        });
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, path);
       }
       
       await logAuditAction('Add User', `Added user ${newUsername} with role ${newRole}`);
+      setSuccess(`成功新增用戶：${newUsername}`);
       setNewUsername('');
       setNewEmail('');
       setNewPassword('');
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
       console.error(err);
-      alert('Failed to add user: ' + err.message);
+      if (err.code === 'auth/email-already-in-use') {
+        setError('此帳號或 Email 已被使用。如果您之前刪除過此用戶，其底層驗證帳號仍然存在，請使用不同的帳號名稱。');
+      } else {
+        setError('新增用戶失敗：' + (err.message || '未知錯誤'));
+      }
     } finally {
+      if (secondaryApp) {
+        await deleteApp(secondaryApp).catch(console.error);
+      }
       setLoading(false);
     }
   };
@@ -156,40 +167,15 @@ export default function UserManagement() {
     }
   };
 
-  const handleUpdateUser = async (userId: string) => {
-    setUpdatingId(userId);
+  const handleUpdateRole = async (userId: string) => {
+    const path = `users/${userId}`;
     try {
       const userToUpdate = users.find(u => u.id === userId);
-      if (!userToUpdate) return;
-
-      const idToken = await auth.currentUser?.getIdToken();
-      const response = await fetch('/api/admin/update-user', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify({
-          uid: userId,
-          role: editRole !== userToUpdate.role ? editRole : undefined,
-          email: editEmail !== userToUpdate.email ? editEmail : undefined,
-          password: editPassword || undefined
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update user');
-      }
-
-      await logAuditAction('Update User', `Updated user ${userToUpdate.username}`);
+      await updateDoc(doc(db, 'users', userId), { role: editRole });
+      await logAuditAction('Update User Role', `Updated role for user ${userToUpdate?.username} to ${editRole}`);
       setEditingUserId(null);
-      setEditPassword('');
-    } catch (err: any) {
-      console.error(err);
-      alert(err.message);
-    } finally {
-      setUpdatingId(null);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, path);
     }
   };
 
@@ -197,29 +183,14 @@ export default function UserManagement() {
     if (!deleteModal.id) return;
     
     setDeletingId(deleteModal.id);
+    const path = `users/${deleteModal.id}`;
     try {
       const userToDelete = users.find(u => u.id === deleteModal.id);
-      const idToken = await auth.currentUser?.getIdToken();
-      
-      const response = await fetch('/api/admin/delete-user', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify({ uid: deleteModal.id })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete user');
-      }
-
+      await deleteDoc(doc(db, 'users', deleteModal.id));
       await logAuditAction('Delete User', `Deleted user ${userToDelete?.username}`);
       setDeleteModal({ isOpen: false, id: null, username: null });
     } catch (err: any) {
-      console.error(err);
-      alert('Failed to delete user: ' + err.message);
+      handleFirestoreError(err, OperationType.DELETE, path);
     } finally {
       setDeletingId(null);
     }
@@ -248,6 +219,31 @@ export default function UserManagement() {
           </div>
         </div>
 
+        <AnimatePresence mode="wait">
+          {error && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+              animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
+              exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+              className="rounded-xl bg-red-50 p-3 text-sm text-red-600 ring-1 ring-red-200 flex items-center gap-2 overflow-hidden"
+            >
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              {error}
+            </motion.div>
+          )}
+          {success && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+              animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
+              exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+              className="rounded-xl bg-green-50 p-3 text-sm text-green-600 ring-1 ring-green-200 flex items-center gap-2 overflow-hidden"
+            >
+              <Check className="h-4 w-4 shrink-0" />
+              {success}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <form onSubmit={handleAddUser} className="grid grid-cols-1 gap-4 md:grid-cols-5">
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">Username</label>
@@ -264,11 +260,14 @@ export default function UserManagement() {
             <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">Email (Optional)</label>
             <input
               type="email"
-              placeholder="john@example.com"
+              placeholder={`${newUsername.trim().toLowerCase().replace(/\s+/g, '.') || 'username'}@tooling.local`}
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500/10 transition-all"
             />
+            <p className="text-[10px] text-zinc-500 ml-1">
+              若填寫，該用戶必須使用此 Email 登入。若留白，則可直接使用 Username 登入。
+            </p>
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 ml-1">Password</label>
@@ -276,6 +275,7 @@ export default function UserManagement() {
               type="password"
               placeholder="••••••••"
               required
+              minLength={6}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500/10 transition-all"
@@ -323,51 +323,25 @@ export default function UserManagement() {
                 )}>
                   {user.role === 'admin' ? <Shield className="h-6 w-6" /> : <UserIcon className="h-6 w-6" />}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-zinc-900 truncate">{user.username}</p>
+                <div>
+                  <p className="font-bold text-zinc-900">{user.username}</p>
+                  <p className="text-[10px] text-zinc-400 truncate max-w-[120px]">{user.email}</p>
                   {editingUserId === user.id ? (
-                    <div className="mt-2 space-y-2">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-bold uppercase text-zinc-400">Email</label>
-                        <input
-                          type="email"
-                          value={editEmail}
-                          onChange={(e) => setEditEmail(e.target.value)}
-                          className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-500/20"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-bold uppercase text-zinc-400">New Password (Optional)</label>
-                        <input
-                          type="password"
-                          placeholder="Leave blank to keep current"
-                          value={editPassword}
-                          onChange={(e) => setEditPassword(e.target.value)}
-                          className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-500/20"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-bold uppercase text-zinc-400">Role</label>
-                        <select
-                          value={editRole}
-                          onChange={(e) => setEditRole(e.target.value as 'admin' | 'user')}
-                          className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-medium focus:outline-none"
-                        >
-                          <option value="user">User</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      </div>
-                    </div>
+                    <select
+                      value={editRole}
+                      onChange={(e) => setEditRole(e.target.value as 'admin' | 'user')}
+                      className="mt-1 block w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-medium focus:outline-none"
+                    >
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                    </select>
                   ) : (
-                    <>
-                      <p className="text-[10px] text-zinc-400 truncate max-w-[150px]">{user.email}</p>
-                      <span className={cn(
-                        "inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider mt-1",
-                        user.role === 'admin' ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
-                      )}>
-                        {user.role}
-                      </span>
-                    </>
+                    <span className={cn(
+                      "inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider mt-1",
+                      user.role === 'admin' ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                    )}>
+                      {user.role}
+                    </span>
                   )}
                 </div>
               </div>
@@ -375,26 +349,22 @@ export default function UserManagement() {
               {user.username !== 'Leo.Lo' && user.username !== 'Owner' && (
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   {editingUserId === user.id ? (
-                    <div className="flex flex-col gap-1">
+                    <>
                       <button 
-                        onClick={() => handleUpdateUser(user.id)}
-                        disabled={updatingId === user.id}
-                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                        onClick={() => handleUpdateRole(user.id)}
+                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                       >
-                        {updatingId === user.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                        <Check className="h-4 w-4" />
                       </button>
                       <button 
-                        onClick={() => {
-                          setEditingUserId(null);
-                          setEditPassword('');
-                        }}
+                        onClick={() => setEditingUserId(null)}
                         className="p-2 text-zinc-400 hover:bg-zinc-100 rounded-lg transition-colors"
                       >
                         <X className="h-4 w-4" />
                       </button>
-                    </div>
+                    </>
                   ) : (
-                    <div className="flex items-center gap-1">
+                    <>
                       <button 
                         onClick={() => handleSendResetEmail(user)}
                         disabled={resettingId === user.id}
@@ -407,8 +377,6 @@ export default function UserManagement() {
                         onClick={() => {
                           setEditingUserId(user.id);
                           setEditRole(user.role);
-                          setEditEmail(user.email);
-                          setEditPassword('');
                         }}
                         className="p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       >
@@ -420,7 +388,7 @@ export default function UserManagement() {
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
-                    </div>
+                    </>
                   )}
                 </div>
               )}
@@ -447,7 +415,7 @@ export default function UserManagement() {
               </div>
               <p className="mb-8 text-sm leading-relaxed text-zinc-600">
                 Are you sure you want to delete <span className="font-bold text-zinc-900">{deleteModal.username}</span>? 
-                This will remove their access to the system and delete their authentication record.
+                This will remove their access to the system. Note: This only removes their profile from the database, not their authentication record.
               </p>
               <div className="flex justify-end gap-3">
                 <button

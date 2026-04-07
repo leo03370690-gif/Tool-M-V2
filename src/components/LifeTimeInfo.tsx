@@ -97,6 +97,7 @@ export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: b
   const [filterSocketGroups, setFilterSocketGroups] = useState<string[]>([]);
   const [filterPogoPin1Pns, setFilterPogoPin1Pns] = useState<string[]>([]);
   const [filterLoadBoardGroups, setFilterLoadBoardGroups] = useState<string[]>([]);
+  const [displayCount, setDisplayCount] = useState(100);
 
   useEffect(() => {
     const q = query(collection(db, 'lifeTimes'));
@@ -231,7 +232,7 @@ export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: b
             </thead>
             <tbody className="divide-y divide-zinc-50">
               <AnimatePresence mode="popLayout">
-                {filteredRecords.slice(0, 100).map((record, idx) => (
+                {filteredRecords.slice(0, displayCount).map((record, idx) => (
                   <LifeTimeRow
                     key={record.id}
                     record={record}
@@ -244,14 +245,21 @@ export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: b
                     setModal={setModal}
                   />
                 ))}
-                {filteredRecords.length > 100 && (
-                  <tr>
-                    <td colSpan={columns.length + (isAdmin ? 1 : 0)} className="px-6 py-8 text-center text-zinc-400 italic">
-                      Showing first 100 of {filteredRecords.length} records. Use filters to narrow down results.
-                    </td>
-                  </tr>
-                )}
               </AnimatePresence>
+              {filteredRecords.length > displayCount && (
+                <tr>
+                  <td colSpan={columns.length + (isAdmin ? 1 : 0)} className="px-6 py-8 text-center text-zinc-400 italic">
+                    Showing {displayCount} of {filteredRecords.length} records. Use filters to narrow down results, or <button onClick={() => setDisplayCount(prev => prev + 200)} className="text-brand-primary hover:underline font-medium not-italic">load 200 more</button>.
+                  </td>
+                </tr>
+              )}
+              {displayCount > 100 && filteredRecords.length <= displayCount && (
+                <tr>
+                  <td colSpan={columns.length + (isAdmin ? 1 : 0)} className="px-6 py-8 text-center text-zinc-400 italic">
+                    Showing all {filteredRecords.length} records. <button onClick={() => setDisplayCount(100)} className="text-brand-primary hover:underline font-medium not-italic">Show less</button>.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </DoubleScrollbar>

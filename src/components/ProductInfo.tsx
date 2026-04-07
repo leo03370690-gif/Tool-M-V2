@@ -117,6 +117,7 @@ export default function ProductInfo({ isAdmin, selectedFacility }: { isAdmin: bo
   const [filterNicknames, setFilterNicknames] = useState<string[]>([]);
   const [filterChangeKitGroups, setFilterChangeKitGroups] = useState<string[]>([]);
   const [filterLBGroups, setFilterLBGroups] = useState<string[]>([]);
+  const [displayCount, setDisplayCount] = useState(100);
 
   const [modal, setModal] = useState<{isOpen: boolean, id: string | null}>({ isOpen: false, id: null });
 
@@ -310,7 +311,7 @@ export default function ProductInfo({ isAdmin, selectedFacility }: { isAdmin: bo
                     </td>
                   </motion.tr>
                 )}
-                {filteredProducts.slice(0, 100).map((product, idx) => (
+                {filteredProducts.slice(0, displayCount).map((product, idx) => (
                   <ProductRow
                     key={product.id}
                     product={product}
@@ -325,10 +326,17 @@ export default function ProductInfo({ isAdmin, selectedFacility }: { isAdmin: bo
                   />
                 ))}
               </AnimatePresence>
-              {filteredProducts.length > 100 && (
+              {filteredProducts.length > displayCount && (
                 <tr>
                   <td colSpan={columns.length + (isAdmin ? 1 : 0)} className="px-6 py-8 text-center text-zinc-400 italic">
-                    Showing first 100 of {filteredProducts.length} products. Use filters to narrow down results.
+                    Showing {displayCount} of {filteredProducts.length} products. Use filters to narrow down results, or <button onClick={() => setDisplayCount(prev => prev + 200)} className="text-brand-primary hover:underline font-medium not-italic">load 200 more</button>.
+                  </td>
+                </tr>
+              )}
+              {displayCount > 100 && filteredProducts.length <= displayCount && (
+                <tr>
+                  <td colSpan={columns.length + (isAdmin ? 1 : 0)} className="px-6 py-8 text-center text-zinc-400 italic">
+                    Showing all {filteredProducts.length} products. <button onClick={() => setDisplayCount(100)} className="text-brand-primary hover:underline font-medium not-italic">Show less</button>.
                   </td>
                 </tr>
               )}

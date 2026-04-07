@@ -98,6 +98,7 @@ export default function ChangeKitInfo({ isAdmin, selectedFacility }: { isAdmin: 
   const [filterToolsIds, setFilterToolsIds] = useState<string[]>([]);
   const [filterChangeKitGroups, setFilterChangeKitGroups] = useState<string[]>([]);
   const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
+  const [displayCount, setDisplayCount] = useState(100);
 
   useEffect(() => {
     const q = query(collection(db, 'changeKits'));
@@ -277,7 +278,7 @@ export default function ChangeKitInfo({ isAdmin, selectedFacility }: { isAdmin: 
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-50">
-                  {filteredKits.slice(0, 100).map((kit, idx) => (
+                  {filteredKits.slice(0, displayCount).map((kit, idx) => (
                     <KitRow
                       key={kit.id}
                       kit={kit}
@@ -290,10 +291,17 @@ export default function ChangeKitInfo({ isAdmin, selectedFacility }: { isAdmin: 
                       setModal={setModal}
                     />
                   ))}
-                  {filteredKits.length > 100 && (
+                  {filteredKits.length > displayCount && (
                     <tr>
                       <td colSpan={columns.length + (isAdmin ? 1 : 0)} className="px-6 py-8 text-center text-zinc-400 italic">
-                        Showing first 100 of {filteredKits.length} kits. Use filters to narrow down results.
+                        Showing {displayCount} of {filteredKits.length} kits. Use filters to narrow down results, or <button onClick={() => setDisplayCount(prev => prev + 200)} className="text-brand-primary hover:underline font-medium not-italic">load 200 more</button>.
+                      </td>
+                    </tr>
+                  )}
+                  {displayCount > 100 && filteredKits.length <= displayCount && (
+                    <tr>
+                      <td colSpan={columns.length + (isAdmin ? 1 : 0)} className="px-6 py-8 text-center text-zinc-400 italic">
+                        Showing all {filteredKits.length} kits. <button onClick={() => setDisplayCount(100)} className="text-brand-primary hover:underline font-medium not-italic">Show less</button>.
                       </td>
                     </tr>
                   )}

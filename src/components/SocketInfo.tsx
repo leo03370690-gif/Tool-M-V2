@@ -127,6 +127,7 @@ export default function SocketInfo({ isAdmin, selectedFacility }: { isAdmin: boo
   const [filterProjects, setFilterProjects] = useState<string[]>([]);
   const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
   const [filterPogoPinPns, setFilterPogoPinPns] = useState<string[]>([]);
+  const [displayCount, setDisplayCount] = useState(100);
 
   useEffect(() => {
     const q = query(collection(db, 'sockets'));
@@ -345,7 +346,7 @@ export default function SocketInfo({ isAdmin, selectedFacility }: { isAdmin: boo
             </thead>
             <tbody className="divide-y divide-zinc-50">
               <AnimatePresence mode="popLayout">
-                {filteredSockets.slice(0, 100).map((socket, idx) => (
+                {filteredSockets.slice(0, displayCount).map((socket, idx) => (
                   <SocketRow
                     key={socket.id}
                     socket={socket}
@@ -359,10 +360,17 @@ export default function SocketInfo({ isAdmin, selectedFacility }: { isAdmin: boo
                   />
                 ))}
               </AnimatePresence>
-              {filteredSockets.length > 100 && (
+              {filteredSockets.length > displayCount && (
                 <tr>
                   <td colSpan={columns.length + (isAdmin ? 1 : 0)} className="px-6 py-8 text-center text-zinc-400 italic">
-                    Showing first 100 of {filteredSockets.length} sockets. Use filters to narrow down results.
+                    Showing {displayCount} of {filteredSockets.length} sockets. Use filters to narrow down results, or <button onClick={() => setDisplayCount(prev => prev + 200)} className="text-brand-primary hover:underline font-medium not-italic">load 200 more</button>.
+                  </td>
+                </tr>
+              )}
+              {displayCount > 100 && filteredSockets.length <= displayCount && (
+                <tr>
+                  <td colSpan={columns.length + (isAdmin ? 1 : 0)} className="px-6 py-8 text-center text-zinc-400 italic">
+                    Showing all {filteredSockets.length} sockets. <button onClick={() => setDisplayCount(100)} className="text-brand-primary hover:underline font-medium not-italic">Show less</button>.
                   </td>
                 </tr>
               )}

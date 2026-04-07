@@ -102,6 +102,7 @@ export default function LoadBoardInfo({ isAdmin, selectedFacility }: { isAdmin: 
   const [filterLBNames, setFilterLBNames] = useState<string[]>([]);
   const [filterLBGroups, setFilterLBGroups] = useState<string[]>([]);
   const [filterLocations, setFilterLocations] = useState<string[]>([]);
+  const [displayCount, setDisplayCount] = useState(100);
 
   const [modal, setModal] = useState<{isOpen: boolean, id: string | null}>({ isOpen: false, id: null });
 
@@ -334,7 +335,7 @@ export default function LoadBoardInfo({ isAdmin, selectedFacility }: { isAdmin: 
                       </td>
                     </motion.tr>
                   )}
-                  {filteredLoadBoards.slice(0, 100).map((lb, idx) => (
+                  {filteredLoadBoards.slice(0, displayCount).map((lb, idx) => (
                     <LoadBoardRow
                       key={lb.id}
                       lb={lb}
@@ -347,10 +348,17 @@ export default function LoadBoardInfo({ isAdmin, selectedFacility }: { isAdmin: 
                       setModal={setModal}
                     />
                   ))}
-                  {filteredLoadBoards.length > 100 && (
+                  {filteredLoadBoards.length > displayCount && (
                     <tr>
                       <td colSpan={columns.length + (isAdmin ? 1 : 0)} className="px-6 py-8 text-center text-zinc-400 italic">
-                        Showing first 100 of {filteredLoadBoards.length} load boards. Use filters to narrow down results.
+                        Showing {displayCount} of {filteredLoadBoards.length} load boards. Use filters to narrow down results, or <button onClick={() => setDisplayCount(prev => prev + 200)} className="text-brand-primary hover:underline font-medium not-italic">load 200 more</button>.
+                      </td>
+                    </tr>
+                  )}
+                  {displayCount > 100 && filteredLoadBoards.length <= displayCount && (
+                    <tr>
+                      <td colSpan={columns.length + (isAdmin ? 1 : 0)} className="px-6 py-8 text-center text-zinc-400 italic">
+                        Showing all {filteredLoadBoards.length} load boards. <button onClick={() => setDisplayCount(100)} className="text-brand-primary hover:underline font-medium not-italic">Show less</button>.
                       </td>
                     </tr>
                   )}
