@@ -216,9 +216,8 @@ export default function RequiredPogoPin({ selectedFacility }: { selectedFacility
   const summaryData = React.useMemo(() => getSummary(), [rows, pogoPinsData]);
 
   const getDetailedSummary = React.useCallback(() => {
-    // 1. Find pogo pins from Summary list where final required > 0
+    // 1. Find pogo pins from Summary list
     const targetPins = summaryData
-      .filter(([, data]) => data.final > 0)
       .map(([pinName, data]) => ({ pinName, data }));
     
     return targetPins.map(({ pinName, data }) => {
@@ -347,9 +346,9 @@ export default function RequiredPogoPin({ selectedFacility }: { selectedFacility
     }
 
     if (filterRequiredQty === 'gt0') {
-      result = result.filter(group => group.requiredPinQty > 0);
+      result = result.filter(group => group.final > 0);
     } else if (filterRequiredQty === 'lte0') {
-      result = result.filter(group => group.requiredPinQty <= 0);
+      result = result.filter(group => group.final <= 0);
     }
 
     if (sortConfig) {
@@ -378,7 +377,7 @@ export default function RequiredPogoPin({ selectedFacility }: { selectedFacility
     }
 
     return result;
-  }, [detailedSummaryData, detailedSearchTerm, filterPogoPins, filterNicknames, filterDevices, filterInsertions, sortConfig]);
+  }, [detailedSummaryData, detailedSearchTerm, filterPogoPins, filterNicknames, filterDevices, filterInsertions, filterRequiredQty, sortConfig]);
 
   const handleSort = (key: string) => {
     setSortConfig(current => {
