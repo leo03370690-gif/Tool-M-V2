@@ -281,7 +281,7 @@ export default function ProductInfo({ isAdmin, selectedFacility }: { isAdmin: bo
             </button>
           </div>
           <div className="w-px h-4 bg-zinc-200 shrink-0"></div>
-          <div className="flex items-center gap-2 px-1">
+          <div className="flex flex-wrap items-center gap-2 px-1">
             <MultiSelectDropdown
               values={filterDevices}
               onChange={setFilterDevices}

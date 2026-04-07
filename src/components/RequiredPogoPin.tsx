@@ -955,7 +955,7 @@ export default function RequiredPogoPin({ selectedFacility }: { selectedFacility
                   </button>
                 </div>
                 <div className="w-px h-4 bg-zinc-200 shrink-0"></div>
-                <div className="flex items-center gap-2 px-1">
+                <div className="flex flex-wrap items-center gap-2 px-1">
                   <div className="flex items-center gap-1 bg-zinc-50 rounded-lg p-1 border border-zinc-100">
                     <button
                       onClick={() => setFilterRequiredQty(filterRequiredQty === 'gt0' ? 'all' : 'gt0')}
