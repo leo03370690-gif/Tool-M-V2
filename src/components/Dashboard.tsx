@@ -151,7 +151,7 @@ export default function Dashboard({ user, role, selectedFacility, onBackToFacili
       {/* Main Content */}
       <main className="flex-1 overflow-auto relative">
         {/* Top Header */}
-        <header className="sticky top-0 z-10 glass h-20 px-8 flex items-center justify-between">
+        <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-zinc-200 h-20 px-8 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
