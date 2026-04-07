@@ -180,47 +180,62 @@ export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: b
   const columns = allColumns.filter(col => visibleColumns.includes(col.key));
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="font-serif text-3xl italic text-zinc-900">Life Time Info</h2>
+          <h2 className="font-serif text-4xl italic text-zinc-900 tracking-tight">Life Time Info</h2>
           <p className="text-xs text-zinc-400 uppercase tracking-[0.2em] font-bold">Manage socket and pogo pin life cycle data</p>
         </div>
-        <div className="flex items-center gap-4 flex-wrap justify-end">
-          <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-xl px-2 py-1 shadow-sm">
+        {isAdmin && (
+          <button 
+            onClick={async () => {
+              const docRef = await addDoc(collection(db, 'lifeTimes'), { socketGroup: 'NEW_GROUP' });
+              setEditingId(docRef.id);
+            }}
+            className="flex items-center gap-2 rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-black/10 active:scale-95 whitespace-nowrap"
+          >
+            <Plus className="h-4 w-4" />
+            <span>ADD RECORD</span>
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between bg-white p-2 rounded-2xl border border-zinc-100 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 flex-1 w-full lg:w-auto pb-2 lg:pb-0">
+          <div className="flex items-center gap-1.5 px-2">
+            <Filter className="h-3.5 w-3.5 text-zinc-400" />
             <button
               onClick={() => {
                 setFilterSocketGroups([]);
                 setFilterPogoPin1Pns([]);
                 setFilterLoadBoardGroups([]);
               }}
-              className="px-2 py-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-md transition-colors whitespace-nowrap"
+              className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-md transition-colors whitespace-nowrap"
             >
-              Clear All Filters
+              Clear
             </button>
-            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
-            <Filter className="h-4 w-4 text-zinc-400 ml-2" />
+          </div>
+          <div className="w-px h-4 bg-zinc-200 shrink-0"></div>
+          <div className="flex items-center gap-2 px-1">
             <MultiSelectDropdown
               values={filterSocketGroups}
               onChange={setFilterSocketGroups}
               options={uniqueSocketGroups}
-              placeholder="All Socket Groups"
+              placeholder="Socket Groups"
             />
-            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
             <MultiSelectDropdown
               values={filterPogoPin1Pns}
               onChange={setFilterPogoPin1Pns}
               options={uniquePogoPin1Pns}
-              placeholder="All Pogo Pin 1 P/Ns"
+              placeholder="Pogo Pin 1 P/Ns"
             />
-            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
             <MultiSelectDropdown
               values={filterLoadBoardGroups}
               onChange={setFilterLoadBoardGroups}
               options={uniqueLoadBoardGroups}
-              placeholder="All Load Board Groups"
+              placeholder="LB Groups"
             />
-            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
+            <div className="w-px h-4 bg-zinc-200 shrink-0 mx-1"></div>
             <MultiSelectDropdown
               values={allColumns.filter(c => visibleColumns.includes(c.key)).map(c => c.label)}
               onChange={(labels) => {
@@ -231,28 +246,17 @@ export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: b
               placeholder="Columns"
             />
           </div>
-          <div className="relative group">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-primary transition-colors" />
-            <input
-              type="text"
-              placeholder="Search records..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-64 rounded-xl border border-zinc-200 bg-zinc-50/50 pl-10 pr-4 py-2.5 text-sm focus:border-brand-primary focus:bg-white focus:outline-none transition-all"
-            />
-          </div>
-          {isAdmin && (
-            <button 
-              onClick={async () => {
-                const docRef = await addDoc(collection(db, 'lifeTimes'), { socketGroup: 'NEW_GROUP' });
-                setEditingId(docRef.id);
-              }}
-              className="flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-black/10 active:scale-95"
-            >
-              <Plus className="h-4 w-4" />
-              <span>ADD RECORD</span>
-            </button>
-          )}
+        </div>
+        
+        <div className="relative w-full lg:w-72 shrink-0">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <input
+            type="text"
+            placeholder="Search records..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full rounded-xl border border-zinc-100 bg-zinc-50/50 pl-10 pr-4 py-2 text-sm focus:border-brand-primary focus:bg-white focus:outline-none transition-all"
+          />
         </div>
       </div>
 

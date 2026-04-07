@@ -230,75 +230,13 @@ export default function LoadBoardInfo({ isAdmin, selectedFacility }: { isAdmin: 
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="font-serif text-3xl italic text-zinc-900">Load Board Info</h2>
+          <h2 className="font-serif text-4xl italic text-zinc-900 tracking-tight">Load Board Info</h2>
           <p className="text-xs text-zinc-400 uppercase tracking-[0.2em] font-bold">Track and manage load board inventory</p>
         </div>
-        <div className="flex items-center gap-4 flex-wrap justify-end">
-          <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-xl px-2 py-1 shadow-sm">
-            <button
-              onClick={() => {
-                setFilterProjectNames([]);
-                setFilterLBNames([]);
-                setFilterLBGroups([]);
-                setFilterLocations([]);
-              }}
-              className="px-2 py-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-md transition-colors whitespace-nowrap"
-            >
-              Clear All Filters
-            </button>
-            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
-            <Filter className="h-4 w-4 text-zinc-400 ml-2" />
-            <MultiSelectDropdown
-              values={filterProjectNames}
-              onChange={setFilterProjectNames}
-              options={uniqueProjectNames}
-              placeholder="All Project Names"
-            />
-            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
-            <MultiSelectDropdown
-              values={filterLBNames}
-              onChange={setFilterLBNames}
-              options={uniqueLBNames}
-              placeholder="All LB Names"
-            />
-            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
-            <MultiSelectDropdown
-              values={filterLBGroups}
-              onChange={setFilterLBGroups}
-              options={uniqueLBGroups}
-              placeholder="All LB Groups"
-            />
-            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
-            <MultiSelectDropdown
-              values={filterLocations}
-              onChange={setFilterLocations}
-              options={uniqueLocations}
-              placeholder="All Locations"
-            />
-            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
-            <MultiSelectDropdown
-              values={allColumns.filter(c => visibleColumns.includes(c.key)).map(c => c.label)}
-              onChange={(labels) => {
-                const newVisible = allColumns.filter(c => labels.includes(c.label)).map(c => c.key);
-                setVisibleColumns(newVisible);
-              }}
-              options={allColumns.map(c => c.label)}
-              placeholder="Columns"
-            />
-          </div>
-          <div className="relative group">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-primary transition-colors" />
-            <input
-              type="text"
-              placeholder="Search load boards..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-64 rounded-xl border border-zinc-200 bg-zinc-50/50 pl-10 pr-4 py-2.5 text-sm focus:border-brand-primary focus:bg-white focus:outline-none transition-all"
-            />
-          </div>
+        <div className="flex items-center gap-3">
           <div className="flex rounded-xl border border-zinc-200 bg-zinc-50/50 p-1">
             <button
               onClick={() => setViewMode('list')}
@@ -324,12 +262,79 @@ export default function LoadBoardInfo({ isAdmin, selectedFacility }: { isAdmin: 
           {isAdmin && (
             <button 
               onClick={() => setEditingId('new')}
-              className="flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-black/10 active:scale-95"
+              className="flex items-center gap-2 rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-black/10 active:scale-95 whitespace-nowrap"
             >
               <Plus className="h-4 w-4" />
               <span>ADD LB</span>
             </button>
           )}
+        </div>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between bg-white p-2 rounded-2xl border border-zinc-100 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 flex-1 w-full lg:w-auto pb-2 lg:pb-0">
+          <div className="flex items-center gap-1.5 px-2">
+            <Filter className="h-3.5 w-3.5 text-zinc-400" />
+            <button
+              onClick={() => {
+                setFilterProjectNames([]);
+                setFilterLBNames([]);
+                setFilterLBGroups([]);
+                setFilterLocations([]);
+              }}
+              className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-md transition-colors whitespace-nowrap"
+            >
+              Clear
+            </button>
+          </div>
+          <div className="w-px h-4 bg-zinc-200 shrink-0"></div>
+          <div className="flex items-center gap-2 px-1">
+            <MultiSelectDropdown
+              values={filterProjectNames}
+              onChange={setFilterProjectNames}
+              options={uniqueProjectNames}
+              placeholder="Projects"
+            />
+            <MultiSelectDropdown
+              values={filterLBNames}
+              onChange={setFilterLBNames}
+              options={uniqueLBNames}
+              placeholder="LB Names"
+            />
+            <MultiSelectDropdown
+              values={filterLBGroups}
+              onChange={setFilterLBGroups}
+              options={uniqueLBGroups}
+              placeholder="LB Groups"
+            />
+            <MultiSelectDropdown
+              values={filterLocations}
+              onChange={setFilterLocations}
+              options={uniqueLocations}
+              placeholder="Locations"
+            />
+            <div className="w-px h-4 bg-zinc-200 shrink-0 mx-1"></div>
+            <MultiSelectDropdown
+              values={allColumns.filter(c => visibleColumns.includes(c.key)).map(c => c.label)}
+              onChange={(labels) => {
+                const newVisible = allColumns.filter(c => labels.includes(c.label)).map(c => c.key);
+                setVisibleColumns(newVisible);
+              }}
+              options={allColumns.map(c => c.label)}
+              placeholder="Columns"
+            />
+          </div>
+        </div>
+        
+        <div className="relative w-full lg:w-72 shrink-0">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <input
+            type="text"
+            placeholder="Search load boards..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full rounded-xl border border-zinc-100 bg-zinc-50/50 pl-10 pr-4 py-2 text-sm focus:border-brand-primary focus:bg-white focus:outline-none transition-all"
+          />
         </div>
       </div>
 
