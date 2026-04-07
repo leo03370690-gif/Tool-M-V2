@@ -75,6 +75,15 @@ export function MultiSelectDropdown({ values, onChange, options, placeholder }: 
             >
               All (Clear Selection)
             </button>
+            <button
+              className={cn(
+                "w-full text-left px-2 py-1.5 text-sm rounded-md hover:bg-zinc-100",
+                values.length === options.length && options.length > 0 && "bg-zinc-100 font-medium"
+              )}
+              onClick={() => { onChange([...options]); setIsOpen(false); setSearch(''); }}
+            >
+              Select All
+            </button>
             {filteredOptions.map(opt => {
               const isSelected = values.includes(opt);
               return (

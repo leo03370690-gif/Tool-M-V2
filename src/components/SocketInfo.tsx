@@ -6,6 +6,7 @@ import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { DoubleScrollbar } from './ui/DoubleScrollbar';
 import { MultiSelectDropdown } from './ui/MultiSelectDropdown';
+import { usePersistentState } from '../lib/usePersistentState';
 
 interface Socket {
   id: string;
@@ -122,11 +123,11 @@ export default function SocketInfo({ isAdmin, selectedFacility }: { isAdmin: boo
   const [modal, setModal] = useState<{isOpen: boolean, id: string | null}>({ isOpen: false, id: null });
   const [searchTerm, setSearchTerm] = useState('');
 
-  const [filterSocketGroups, setFilterSocketGroups] = useState<string[]>([]);
-  const [filterToolsIds, setFilterToolsIds] = useState<string[]>([]);
-  const [filterProjects, setFilterProjects] = useState<string[]>([]);
-  const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
-  const [filterPogoPinPns, setFilterPogoPinPns] = useState<string[]>([]);
+  const [filterSocketGroups, setFilterSocketGroups] = usePersistentState<string[]>('socketInfo_filterSocketGroups', []);
+  const [filterToolsIds, setFilterToolsIds] = usePersistentState<string[]>('socketInfo_filterToolsIds', []);
+  const [filterProjects, setFilterProjects] = usePersistentState<string[]>('socketInfo_filterProjects', []);
+  const [filterStatuses, setFilterStatuses] = usePersistentState<string[]>('socketInfo_filterStatuses', []);
+  const [filterPogoPinPns, setFilterPogoPinPns] = usePersistentState<string[]>('socketInfo_filterPogoPinPns', []);
   const [displayCount, setDisplayCount] = useState(100);
 
   useEffect(() => {
@@ -236,6 +237,19 @@ export default function SocketInfo({ isAdmin, selectedFacility }: { isAdmin: boo
         </div>
         <div className="flex items-center gap-4 flex-wrap justify-end">
           <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-xl px-2 py-1 shadow-sm">
+            <button
+              onClick={() => {
+                setFilterSocketGroups([]);
+                setFilterToolsIds([]);
+                setFilterProjects([]);
+                setFilterStatuses([]);
+                setFilterPogoPinPns([]);
+              }}
+              className="px-2 py-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-md transition-colors whitespace-nowrap"
+            >
+              Clear All Filters
+            </button>
+            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
             <Filter className="h-4 w-4 text-zinc-400 ml-2" />
             <MultiSelectDropdown
               values={filterSocketGroups}

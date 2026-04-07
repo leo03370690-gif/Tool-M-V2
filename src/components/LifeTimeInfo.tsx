@@ -6,6 +6,7 @@ import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { DoubleScrollbar } from './ui/DoubleScrollbar';
 import { MultiSelectDropdown } from './ui/MultiSelectDropdown';
+import { usePersistentState } from '../lib/usePersistentState';
 
 interface LifeTime {
   id: string;
@@ -94,9 +95,9 @@ export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: b
   const [searchTerm, setSearchTerm] = useState('');
   const [modal, setModal] = useState<{isOpen: boolean, id: string | null}>({ isOpen: false, id: null });
 
-  const [filterSocketGroups, setFilterSocketGroups] = useState<string[]>([]);
-  const [filterPogoPin1Pns, setFilterPogoPin1Pns] = useState<string[]>([]);
-  const [filterLoadBoardGroups, setFilterLoadBoardGroups] = useState<string[]>([]);
+  const [filterSocketGroups, setFilterSocketGroups] = usePersistentState<string[]>('lifeTimeInfo_filterSocketGroups', []);
+  const [filterPogoPin1Pns, setFilterPogoPin1Pns] = usePersistentState<string[]>('lifeTimeInfo_filterPogoPin1Pns', []);
+  const [filterLoadBoardGroups, setFilterLoadBoardGroups] = usePersistentState<string[]>('lifeTimeInfo_filterLoadBoardGroups', []);
   const [displayCount, setDisplayCount] = useState(100);
 
   useEffect(() => {
@@ -162,6 +163,17 @@ export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: b
         </div>
         <div className="flex items-center gap-4 flex-wrap justify-end">
           <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-xl px-2 py-1 shadow-sm">
+            <button
+              onClick={() => {
+                setFilterSocketGroups([]);
+                setFilterPogoPin1Pns([]);
+                setFilterLoadBoardGroups([]);
+              }}
+              className="px-2 py-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-md transition-colors whitespace-nowrap"
+            >
+              Clear All Filters
+            </button>
+            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
             <Filter className="h-4 w-4 text-zinc-400 ml-2" />
             <MultiSelectDropdown
               values={filterSocketGroups}

@@ -6,6 +6,7 @@ import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { DoubleScrollbar } from './ui/DoubleScrollbar';
 import { MultiSelectDropdown } from './ui/MultiSelectDropdown';
+import { usePersistentState } from '../lib/usePersistentState';
 
 interface Product {
   id: string;
@@ -112,11 +113,11 @@ export default function ProductInfo({ isAdmin, selectedFacility }: { isAdmin: bo
   const [newProduct, setNewProduct] = useState<Partial<Product>>({});
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
 
-  const [filterDevices, setFilterDevices] = useState<string[]>([]);
-  const [filterProjectNames, setFilterProjectNames] = useState<string[]>([]);
-  const [filterNicknames, setFilterNicknames] = useState<string[]>([]);
-  const [filterChangeKitGroups, setFilterChangeKitGroups] = useState<string[]>([]);
-  const [filterLBGroups, setFilterLBGroups] = useState<string[]>([]);
+  const [filterDevices, setFilterDevices] = usePersistentState<string[]>('productInfo_filterDevices', []);
+  const [filterProjectNames, setFilterProjectNames] = usePersistentState<string[]>('productInfo_filterProjectNames', []);
+  const [filterNicknames, setFilterNicknames] = usePersistentState<string[]>('productInfo_filterNicknames', []);
+  const [filterChangeKitGroups, setFilterChangeKitGroups] = usePersistentState<string[]>('productInfo_filterChangeKitGroups', []);
+  const [filterLBGroups, setFilterLBGroups] = usePersistentState<string[]>('productInfo_filterLBGroups', []);
   const [displayCount, setDisplayCount] = useState(100);
 
   const [modal, setModal] = useState<{isOpen: boolean, id: string | null}>({ isOpen: false, id: null });
@@ -209,6 +210,19 @@ export default function ProductInfo({ isAdmin, selectedFacility }: { isAdmin: bo
         </div>
         <div className="flex items-center gap-4 flex-wrap justify-end">
           <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-xl px-2 py-1 shadow-sm">
+            <button
+              onClick={() => {
+                setFilterDevices([]);
+                setFilterProjectNames([]);
+                setFilterNicknames([]);
+                setFilterChangeKitGroups([]);
+                setFilterLBGroups([]);
+              }}
+              className="px-2 py-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-md transition-colors whitespace-nowrap"
+            >
+              Clear All Filters
+            </button>
+            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
             <Filter className="h-4 w-4 text-zinc-400 ml-2" />
             <MultiSelectDropdown
               values={filterDevices}
@@ -465,10 +479,18 @@ function DeviceDetailsModal({ device, products, onClose }: { device: string, pro
                 insertions.map(insertion => {
                   const insertionProducts = products.filter(p => p.insertion === insertion);
                   
-                  const socket1Names = Array.from(new Set(insertionProducts.map(p => p.socketName1).filter(Boolean)));
-                  const socket2Names = Array.from(new Set(insertionProducts.map(p => p.socketName2).filter(Boolean)));
-                  const kitGroups = new Set(insertionProducts.map(p => p.changeKitGroup).filter(Boolean));
-                  const lbGroups = new Set(insertionProducts.map(p => p.lbGroup).filter(Boolean));
+                  const socket1Names = Array.from(new Set(
+                    insertionProducts.flatMap(p => (p.socketName1 || '').split(',').map(s => s.trim()).filter(Boolean))
+                  ));
+                  const socket2Names = Array.from(new Set(
+                    insertionProducts.flatMap(p => (p.socketName2 || '').split(',').map(s => s.trim()).filter(Boolean))
+                  ));
+                  const kitGroups = new Set(
+                    insertionProducts.flatMap(p => (p.changeKitGroup || '').split(',').map(s => s.trim()).filter(Boolean))
+                  );
+                  const lbGroups = new Set(
+                    insertionProducts.flatMap(p => (p.lbGroup || '').split(',').map(s => s.trim()).filter(Boolean))
+                  );
 
                   return (
                     <div key={insertion} className="rounded-2xl border border-zinc-100 bg-zinc-50/50 p-5">
@@ -481,9 +503,13 @@ function DeviceDetailsModal({ device, products, onClose }: { device: string, pro
                               const count = socketsData.filter(s => {
                                 const fac = (s.facility || '').trim().toUpperCase();
                                 const loc = (s.location || '').trim().toUpperCase();
-                                return fac === loc && loc && s.socketGroupPin1 === name;
+                                const sGroups = (s.socketGroupPin1 || '').split(',').map((s: string) => s.trim());
+                                return fac === loc && loc && sGroups.includes(name);
                               }).length;
-                              const relatedLifeTimes = lifeTimesData.filter(lt => lt.socketGroup === name);
+                              const relatedLifeTimes = lifeTimesData.filter(lt => {
+                                const ltGroups = (lt.socketGroup || '').split(',').map((s: string) => s.trim());
+                                return ltGroups.includes(name);
+                              });
                               return (
                                 <div key={`s1-${name}`} className="flex flex-col gap-2 border-b border-zinc-100 pb-3 last:border-0 last:pb-0">
                                   <div className="flex items-center justify-between">
@@ -519,9 +545,13 @@ function DeviceDetailsModal({ device, products, onClose }: { device: string, pro
                               const count = socketsData.filter(s => {
                                 const fac = (s.facility || '').trim().toUpperCase();
                                 const loc = (s.location || '').trim().toUpperCase();
-                                return fac === loc && loc && s.socketGroupPin1 === name;
+                                const sGroups = (s.socketGroupPin1 || '').split(',').map((s: string) => s.trim());
+                                return fac === loc && loc && sGroups.includes(name);
                               }).length;
-                              const relatedLifeTimes = lifeTimesData.filter(lt => lt.socketGroup === name);
+                              const relatedLifeTimes = lifeTimesData.filter(lt => {
+                                const ltGroups = (lt.socketGroup || '').split(',').map((s: string) => s.trim());
+                                return ltGroups.includes(name);
+                              });
                               return (
                                 <div key={`s2-${name}`} className="flex flex-col gap-2 border-b border-zinc-100 pb-3 last:border-0 last:pb-0">
                                   <div className="flex items-center justify-between">
@@ -565,7 +595,8 @@ function DeviceDetailsModal({ device, products, onClose }: { device: string, pro
                               const count = kitsData.filter(k => {
                                 const fac = (k.facility || '').trim().toUpperCase();
                                 const loc = (k.location || '').trim().toUpperCase();
-                                return fac === loc && loc && k.changeKitGroup === name;
+                                const kGroups = (k.changeKitGroup || '').split(',').map((s: string) => s.trim());
+                                return fac === loc && loc && kGroups.includes(name);
                               }).length;
                               return (
                                 <div key={`kit-${name}`} className="flex items-center justify-between border-b border-zinc-100 pb-3 last:border-0 last:pb-0">
@@ -588,7 +619,8 @@ function DeviceDetailsModal({ device, products, onClose }: { device: string, pro
                               const count = loadBoardsData.filter(lb => {
                                 const fac = (lb.facility || '').trim().toUpperCase();
                                 const loc = (lb.location || '').trim().toUpperCase();
-                                return fac === loc && loc && lb.lbGroup === name;
+                                const lGroups = (lb.lbGroup || '').split(',').map((s: string) => s.trim());
+                                return fac === loc && loc && lGroups.includes(name);
                               }).length;
                               return (
                                 <div key={`lb-${name}`} className="flex items-center justify-between border-b border-zinc-100 pb-3 last:border-0 last:pb-0">

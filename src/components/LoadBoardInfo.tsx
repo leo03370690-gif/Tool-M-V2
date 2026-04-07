@@ -6,6 +6,7 @@ import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { DoubleScrollbar } from './ui/DoubleScrollbar';
 import { MultiSelectDropdown } from './ui/MultiSelectDropdown';
+import { usePersistentState } from '../lib/usePersistentState';
 
 interface LoadBoard {
   id: string;
@@ -98,10 +99,10 @@ export default function LoadBoardInfo({ isAdmin, selectedFacility }: { isAdmin: 
   const [viewMode, setViewMode] = useState<'list' | 'stats'>('list');
   const [newLoadBoard, setNewLoadBoard] = useState<Partial<LoadBoard>>({});
 
-  const [filterProjectNames, setFilterProjectNames] = useState<string[]>([]);
-  const [filterLBNames, setFilterLBNames] = useState<string[]>([]);
-  const [filterLBGroups, setFilterLBGroups] = useState<string[]>([]);
-  const [filterLocations, setFilterLocations] = useState<string[]>([]);
+  const [filterProjectNames, setFilterProjectNames] = usePersistentState<string[]>('lbInfo_filterProjectNames', []);
+  const [filterLBNames, setFilterLBNames] = usePersistentState<string[]>('lbInfo_filterLBNames', []);
+  const [filterLBGroups, setFilterLBGroups] = usePersistentState<string[]>('lbInfo_filterLBGroups', []);
+  const [filterLocations, setFilterLocations] = usePersistentState<string[]>('lbInfo_filterLocations', []);
   const [displayCount, setDisplayCount] = useState(100);
 
   const [modal, setModal] = useState<{isOpen: boolean, id: string | null}>({ isOpen: false, id: null });
@@ -211,6 +212,18 @@ export default function LoadBoardInfo({ isAdmin, selectedFacility }: { isAdmin: 
         </div>
         <div className="flex items-center gap-4 flex-wrap justify-end">
           <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-xl px-2 py-1 shadow-sm">
+            <button
+              onClick={() => {
+                setFilterProjectNames([]);
+                setFilterLBNames([]);
+                setFilterLBGroups([]);
+                setFilterLocations([]);
+              }}
+              className="px-2 py-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-md transition-colors whitespace-nowrap"
+            >
+              Clear All Filters
+            </button>
+            <div className="w-px h-4 bg-zinc-200 mx-1"></div>
             <Filter className="h-4 w-4 text-zinc-400 ml-2" />
             <MultiSelectDropdown
               values={filterProjectNames}

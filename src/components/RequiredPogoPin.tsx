@@ -7,6 +7,7 @@ import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { DoubleScrollbar } from './ui/DoubleScrollbar';
 import { MultiSelectDropdown } from './ui/MultiSelectDropdown';
+import { usePersistentState } from '../lib/usePersistentState';
 
 interface RowData {
   id: string;
@@ -34,10 +35,11 @@ export default function RequiredPogoPin({ selectedFacility }: { selectedFacility
   const [pogoPinsData, setPogoPinsData] = useState<any[]>([]);
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const [detailedSearchTerm, setDetailedSearchTerm] = useState('');
-  const [filterPogoPins, setFilterPogoPins] = useState<string[]>([]);
-  const [filterNicknames, setFilterNicknames] = useState<string[]>([]);
-  const [filterDevices, setFilterDevices] = useState<string[]>([]);
-  const [filterInsertions, setFilterInsertions] = useState<string[]>([]);
+  const [filterPogoPins, setFilterPogoPins] = usePersistentState<string[]>('reqPogoPin_filterPogoPins', []);
+  const [filterNicknames, setFilterNicknames] = usePersistentState<string[]>('reqPogoPin_filterNicknames', []);
+  const [filterDevices, setFilterDevices] = usePersistentState<string[]>('reqPogoPin_filterDevices', []);
+  const [filterInsertions, setFilterInsertions] = usePersistentState<string[]>('reqPogoPin_filterInsertions', []);
+  const [filterRequiredQty, setFilterRequiredQty] = usePersistentState<'all' | 'gt0' | 'lte0'>('reqPogoPin_filterRequiredQty', 'all');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -344,6 +346,12 @@ export default function RequiredPogoPin({ selectedFacility }: { selectedFacility
       }).filter(group => group.details.length > 0);
     }
 
+    if (filterRequiredQty === 'gt0') {
+      result = result.filter(group => group.requiredPinQty > 0);
+    } else if (filterRequiredQty === 'lte0') {
+      result = result.filter(group => group.requiredPinQty <= 0);
+    }
+
     if (sortConfig) {
       result = [...result].sort((a, b) => {
         let aValue: any;
@@ -611,6 +619,32 @@ export default function RequiredPogoPin({ selectedFacility }: { selectedFacility
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-xl px-2 py-1 shadow-sm">
+                  <button
+                    onClick={() => {
+                      setFilterPogoPins([]);
+                      setFilterNicknames([]);
+                      setFilterDevices([]);
+                      setFilterInsertions([]);
+                      setFilterRequiredQty('all');
+                    }}
+                    className="px-2 py-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-md transition-colors whitespace-nowrap"
+                  >
+                    Clear All Filters
+                  </button>
+                  <div className="w-px h-4 bg-zinc-200 mx-1"></div>
+                  <button
+                    onClick={() => setFilterRequiredQty(filterRequiredQty === 'gt0' ? 'all' : 'gt0')}
+                    className={`px-2 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${filterRequiredQty === 'gt0' ? 'bg-brand-primary/10 text-brand-primary' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'}`}
+                  >
+                    Required Qty &gt; 0
+                  </button>
+                  <button
+                    onClick={() => setFilterRequiredQty(filterRequiredQty === 'lte0' ? 'all' : 'lte0')}
+                    className={`px-2 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${filterRequiredQty === 'lte0' ? 'bg-brand-primary/10 text-brand-primary' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'}`}
+                  >
+                    Required Qty &le; 0
+                  </button>
+                  <div className="w-px h-4 bg-zinc-200 mx-1"></div>
                   <Filter className="h-4 w-4 text-zinc-400 ml-2" />
                   <MultiSelectDropdown
                     values={filterPogoPins}

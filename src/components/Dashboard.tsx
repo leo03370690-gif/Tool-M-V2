@@ -180,18 +180,6 @@ export default function Dashboard({ user, role, selectedFacility, onBackToFacili
           </div>
 
           <div className="flex items-center gap-6">
-            <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-zinc-100 rounded-full ring-1 ring-black/5">
-              <SearchIcon className="h-4 w-4 text-zinc-400" />
-              <input 
-                type="text" 
-                placeholder="Quick search..." 
-                className="bg-transparent border-none text-xs focus:ring-0 w-32"
-              />
-            </div>
-            <button className="relative p-2 hover:bg-zinc-100 rounded-full transition-colors">
-              <Bell className="h-5 w-5 text-zinc-500" />
-              <span className="absolute top-2 right-2 h-2 w-2 bg-brand-accent rounded-full ring-2 ring-white" />
-            </button>
             <div className="h-10 w-10 rounded-full bg-zinc-200 ring-2 ring-white shadow-sm overflow-hidden">
               <img 
                 src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`} 
