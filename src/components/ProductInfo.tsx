@@ -551,7 +551,7 @@ function DeviceDetailsModal({ device, products, onClose }: { device: string, pro
                   return (
                     <div key={insertion} className="rounded-2xl border border-zinc-100 bg-zinc-50/50 p-5">
                       <h4 className="mb-4 text-lg font-bold text-zinc-900">{insertion}</h4>
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="rounded-xl bg-white p-4 shadow-sm border border-zinc-100">
                           <div className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">Sockets</div>
                           <div className="space-y-3">

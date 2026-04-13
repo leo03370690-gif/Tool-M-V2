@@ -79,8 +79,8 @@ export default function PogoPinInfo({ isAdmin, selectedFacility }: { isAdmin: bo
           <h2 className="font-serif text-3xl italic text-zinc-900">Pogo Pin Info</h2>
           <p className="text-xs text-zinc-400 uppercase tracking-[0.2em] font-bold">Monitor pogo pin inventory levels</p>
         </div>
-        <div className="flex items-center gap-4 flex-wrap justify-end">
-          <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-xl px-2 py-1 shadow-sm">
+        <div className="flex items-center gap-4 flex-wrap justify-start md:justify-end w-full md:w-auto">
+          <div className="flex flex-wrap items-center gap-1 bg-white border border-zinc-200 rounded-xl px-2 py-1 shadow-sm w-full sm:w-auto">
             <button
               onClick={() => {
                 setFilterPinPns([]);
@@ -108,17 +108,17 @@ export default function PogoPinInfo({ isAdmin, selectedFacility }: { isAdmin: bo
               placeholder="Columns"
             />
           </div>
-          <div className="relative group">
+          <div className="relative group w-full sm:w-auto mt-2 sm:mt-0">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-primary transition-colors" />
             <input
               type="text"
               placeholder="Search pins..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-64 rounded-xl border border-zinc-200 bg-zinc-50/50 pl-10 pr-4 py-2.5 text-sm focus:border-brand-primary focus:bg-white focus:outline-none transition-all"
+              className="w-full sm:w-64 rounded-xl border border-zinc-200 bg-zinc-50/50 pl-10 pr-4 py-2.5 text-sm focus:border-brand-primary focus:bg-white focus:outline-none transition-all"
             />
           </div>
-          <div className="flex rounded-xl border border-zinc-200 bg-zinc-50/50 p-1">
+          <div className="flex rounded-xl border border-zinc-200 bg-zinc-50/50 p-1 w-full sm:w-auto mt-2 sm:mt-0">
             <button
               onClick={() => setViewMode('card')}
               className={cn(

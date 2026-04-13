@@ -769,10 +769,10 @@ export default function DataManagement() {
                 multiple
                 ref={fileInputRef}
                 onChange={(e) => setFiles(e.target.files)}
-                className="w-full rounded-xl border-2 border-dashed border-zinc-200/80 bg-zinc-50/30 px-4 py-8 text-sm transition-all hover:border-brand-primary/50 hover:bg-zinc-50 focus:outline-none file:mr-4 file:rounded-full file:border-0 file:bg-brand-primary file:px-6 file:py-2 file:text-xs file:font-bold file:text-white hover:file:bg-zinc-800 cursor-pointer"
+                className="w-full rounded-xl border-2 border-dashed border-zinc-200/80 bg-zinc-50/30 px-4 py-8 text-sm transition-all hover:border-brand-primary/50 hover:bg-zinc-50 focus:outline-none file:mr-4 file:rounded-full file:border-0 file:bg-brand-primary file:px-4 sm:file:px-6 file:py-2 file:text-[10px] sm:file:text-xs file:font-bold file:text-white hover:file:bg-zinc-800 cursor-pointer text-transparent"
               />
               {!files && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-zinc-400 text-xs font-medium">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-zinc-400 text-xs font-medium px-4 text-center">
                   Drag and drop or click to select files
                 </div>
               )}
@@ -804,7 +804,7 @@ export default function DataManagement() {
           </div>
         </div>
 
-        <div className="mt-8 flex items-center justify-between border-t border-zinc-100 pt-6">
+        <div className="mt-8 flex flex-col sm:flex-row sm:items-center justify-between border-t border-zinc-100 pt-6 gap-4">
           <div className="flex items-center gap-3">
             <div className="relative inline-flex items-center cursor-pointer">
               <input
@@ -814,7 +814,7 @@ export default function DataManagement() {
                 onChange={(e) => setClearBeforeImport(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-zinc-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-primary"></div>
+              <div className="w-11 h-6 bg-zinc-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-primary shrink-0"></div>
               <label htmlFor="clearBeforeImport" className="ml-3 text-sm font-medium text-zinc-700">
                 Clear existing data before importing
               </label>
@@ -824,7 +824,7 @@ export default function DataManagement() {
           <button
             onClick={handleImportClick}
             disabled={loading || !files || files.length === 0}
-            className="flex items-center gap-2 rounded-xl bg-brand-primary px-8 py-3 text-sm font-bold text-white transition-all hover:bg-zinc-800 disabled:opacity-50 shadow-lg shadow-brand-primary/20 active:scale-[0.98]"
+            className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-brand-primary px-8 py-3 text-sm font-bold text-white transition-all hover:bg-zinc-800 disabled:opacity-50 shadow-lg shadow-brand-primary/20 active:scale-[0.98]"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             {loading ? 'Processing...' : 'Start Import'}

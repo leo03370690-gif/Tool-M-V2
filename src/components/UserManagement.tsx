@@ -301,9 +301,9 @@ export default function UserManagement() {
         </form>
       </div>
 
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-1 bg-white border border-zinc-200 rounded-xl px-2 py-1 shadow-sm">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-wrap">
+        <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-1 bg-white border border-zinc-200 rounded-xl px-2 py-1 shadow-sm w-full sm:w-auto">
             <button
               onClick={() => {
                 setFilterRoles([]);
@@ -331,18 +331,18 @@ export default function UserManagement() {
               placeholder="Columns"
             />
           </div>
-          <div className="relative group">
+          <div className="relative group w-full sm:w-auto mt-2 sm:mt-0">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 group-focus-within:text-brand-primary transition-colors" />
             <input
               type="text"
               placeholder="Search users..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-64 rounded-xl border border-zinc-200 bg-white pl-10 pr-4 py-2.5 text-sm focus:border-brand-primary focus:outline-none transition-all"
+              className="w-full sm:w-64 rounded-xl border border-zinc-200 bg-white pl-10 pr-4 py-2.5 text-sm focus:border-brand-primary focus:outline-none transition-all"
             />
           </div>
         </div>
-        <div className="flex rounded-xl border border-zinc-200 bg-zinc-50/50 p-1">
+        <div className="flex rounded-xl border border-zinc-200 bg-zinc-50/50 p-1 w-full sm:w-auto mt-2 sm:mt-0">
           <button
             onClick={() => setViewMode('card')}
             className={cn(
