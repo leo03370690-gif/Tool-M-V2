@@ -694,8 +694,8 @@ export default function DataManagement() {
       </div>
 
       {/* Import Section */}
-      <div className="surface-card p-8 relative overflow-hidden">
-        <div className="mb-8 flex items-center justify-between border-b border-zinc-100 pb-6">
+      <div className="surface-card p-4 sm:p-8 relative overflow-hidden">
+        <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-100 pb-6 gap-4">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-100 text-brand-primary">
               <FileSpreadsheet className="h-6 w-6" />
@@ -833,8 +833,8 @@ export default function DataManagement() {
       </div>
 
       {/* Clear Section */}
-      <div className="surface-card p-8 relative overflow-hidden">
-        <div className="mb-8 flex items-center gap-4 border-b border-zinc-100 pb-6">
+      <div className="surface-card p-4 sm:p-8 relative overflow-hidden">
+        <div className="mb-6 sm:mb-8 flex items-center gap-4 border-b border-zinc-100 pb-6">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-100 text-brand-primary">
             <DatabaseBackup className="h-6 w-6" />
           </div>

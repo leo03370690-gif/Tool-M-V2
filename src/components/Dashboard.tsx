@@ -19,7 +19,9 @@ import {
   Layers,
   Bell,
   Search as SearchIcon,
-  Calculator
+  Calculator,
+  Menu,
+  X
 } from 'lucide-react';
 import ProductInfo from './ProductInfo';
 import SocketInfo from './SocketInfo';
@@ -45,6 +47,7 @@ type Tab = 'product' | 'socket' | 'change-kit' | 'pogo-pin' | 'life-time' | 'loa
 export default function Dashboard({ user, role, selectedFacility, onBackToFacility }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('product');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const isAdmin = role === 'admin';
 
@@ -69,11 +72,27 @@ export default function Dashboard({ user, role, selectedFacility, onBackToFacili
 
   return (
     <div className="flex h-screen bg-bg-canvas font-sans text-brand-primary overflow-hidden">
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="fixed inset-0 z-40 bg-zinc-900/50 backdrop-blur-sm md:hidden"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
       <motion.aside 
         initial={false}
         animate={{ width: isSidebarOpen ? 280 : 80 }}
-        className="flex flex-col border-r border-zinc-200/80 bg-white z-20"
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-zinc-200/80 bg-white transition-transform duration-300 md:relative md:translate-x-0",
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        )}
       >
         <div className="flex h-20 items-center justify-between px-6">
           {isSidebarOpen ? (
@@ -92,13 +111,22 @@ export default function Dashboard({ user, role, selectedFacility, onBackToFacili
               <Cpu className="h-5 w-5 text-white" />
             </div>
           )}
+          <button 
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="md:hidden p-2 -mr-2 text-zinc-500 hover:bg-zinc-100 rounded-lg"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
           {menuItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id as Tab)}
+              onClick={() => {
+                setActiveTab(item.id as Tab);
+                setIsMobileMenuOpen(false);
+              }}
               className={cn(
                 "group relative flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all",
                 activeTab === item.id 
@@ -149,48 +177,55 @@ export default function Dashboard({ user, role, selectedFacility, onBackToFacili
       </motion.aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto relative">
+      <main className="flex-1 overflow-auto relative w-full">
         {/* Top Header */}
-        <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-zinc-200 h-20 px-8 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-xl border-b border-zinc-200 h-20 px-4 md:px-8 flex items-center justify-between">
+          <div className="flex items-center gap-2 md:gap-4">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 hover:bg-zinc-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-zinc-100 rounded-lg transition-colors hidden md:block"
             >
               <Layers className="h-5 w-5 text-zinc-500" />
             </button>
-            <div className="h-6 w-px bg-zinc-200" />
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="p-2 hover:bg-zinc-100 rounded-lg transition-colors md:hidden"
+            >
+              <Menu className="h-5 w-5 text-zinc-500" />
+            </button>
+            <div className="h-6 w-px bg-zinc-200 hidden md:block" />
             <div className="flex flex-col">
-              <h1 className="font-serif text-2xl italic tracking-tight text-zinc-900">
+              <h1 className="font-serif text-xl md:text-2xl italic tracking-tight text-zinc-900 truncate max-w-[120px] md:max-w-none">
                 {menuItems.find(i => i.id === activeTab)?.label}
               </h1>
             </div>
-            <div className="h-6 w-px bg-zinc-200 mx-2" />
+            <div className="h-6 w-px bg-zinc-200 mx-1 md:mx-2" />
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-zinc-700 bg-zinc-100 border border-zinc-200/80 px-3 py-1.5 rounded-full">
-                Facility: {selectedFacility}
+              <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-zinc-700 bg-zinc-100 border border-zinc-200/80 px-2 md:px-3 py-1 md:py-1.5 rounded-full truncate max-w-[80px] md:max-w-none">
+                <span className="hidden md:inline">Facility: </span>{selectedFacility}
               </span>
               <button 
                 onClick={onBackToFacility}
-                className="text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-zinc-900 transition-colors px-3 py-1.5 bg-white border border-zinc-200 rounded-full shadow-sm hover:bg-zinc-50"
+                className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-zinc-900 transition-colors px-2 md:px-3 py-1 md:py-1.5 bg-white border border-zinc-200 rounded-full shadow-sm hover:bg-zinc-50"
               >
                 Change
               </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
-            <div className="h-10 w-10 rounded-full bg-zinc-200 ring-2 ring-white shadow-sm overflow-hidden">
+          <div className="flex items-center gap-4 md:gap-6">
+            <div className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-zinc-200 ring-2 ring-white shadow-sm overflow-hidden shrink-0">
               <img 
                 src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`} 
                 alt="Avatar"
                 referrerPolicy="no-referrer"
+                className="h-full w-full object-cover"
               />
             </div>
           </div>
         </header>
 
-        <div className="p-8">
+        <div className="p-4 md:p-8">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -198,7 +233,7 @@ export default function Dashboard({ user, role, selectedFacility, onBackToFacili
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.2 }}
-              className="rounded-3xl bg-white p-10 card-shadow ring-1 ring-black/5 min-h-[calc(100vh-10rem)]"
+              className="rounded-2xl md:rounded-3xl bg-white p-4 md:p-10 card-shadow ring-1 ring-black/5 min-h-[calc(100vh-8rem)] md:min-h-[calc(100vh-10rem)]"
             >
               {activeTab === 'product' && <ProductInfo isAdmin={isAdmin} selectedFacility={selectedFacility} />}
               {activeTab === 'socket' && <SocketInfo isAdmin={isAdmin} selectedFacility={selectedFacility} />}

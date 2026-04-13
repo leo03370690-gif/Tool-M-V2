@@ -51,7 +51,7 @@ export default function FacilitySelection({ onSelect }: { onSelect: (facility: s
 
   return (
     <div className="min-h-screen bg-bg-canvas flex flex-col items-center justify-center p-6">
-      <div className="absolute top-6 right-6">
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
         <button 
           onClick={() => signOut(auth)}
           className="flex items-center gap-2 text-zinc-500 hover:text-zinc-900 transition-colors bg-white px-4 py-2 rounded-xl shadow-sm border border-zinc-200"

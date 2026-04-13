@@ -73,7 +73,7 @@ export default function AuditLogs() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+      <div className="surface-card overflow-hidden">
         <DoubleScrollbar>
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50/50 text-[11px] font-bold uppercase tracking-wider text-zinc-500">

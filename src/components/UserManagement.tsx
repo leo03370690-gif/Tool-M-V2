@@ -223,7 +223,7 @@ export default function UserManagement() {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-8"
     >
-      <div className="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-6 shadow-sm">
+      <div className="surface-card p-4 sm:p-6">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900 text-white">

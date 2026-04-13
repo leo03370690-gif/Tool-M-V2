@@ -107,8 +107,8 @@ export default function Login() {
         transition={{ duration: 0.4, ease: "easeOut" }}
         className="w-full max-w-md relative z-10"
       >
-        <div className="surface-card p-10 shadow-2xl shadow-black/[0.03]">
-          <div className="text-center mb-10">
+        <div className="surface-card p-6 sm:p-10 shadow-2xl shadow-black/[0.03]">
+          <div className="text-center mb-8 sm:mb-10">
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}

@@ -63,7 +63,7 @@ export default function Settings() {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-8 max-w-2xl"
     >
-      <div className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
+      <div className="surface-card p-4 sm:p-8">
         <div className="mb-8 flex items-center gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-900 text-white">
             <KeyRound className="h-6 w-6" />
