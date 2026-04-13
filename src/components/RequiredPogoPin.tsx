@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { Plus, Trash2, Upload, FileSpreadsheet, Calculator, List, Eraser, Table, Search, Filter, ChevronDown, ArrowUpDown, Check, ExternalLink, ChevronRight, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { cn } from '../lib/utils';
@@ -16,21 +16,12 @@ interface RowData {
   qty: number | '';
   remark: string;
   pogoPins: { name: string; need: number }[];
+  facility?: string;
 }
 
 export default function RequiredPogoPin({ selectedFacility }: { selectedFacility: string }) {
   const [activeTab, setActiveTab] = useState<'input' | 'summary' | 'detailed'>('input');
-  const [rows, setRows] = useState<RowData[]>(() => {
-    const saved = localStorage.getItem('requiredPogoPinRows');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return [];
-      }
-    }
-    return [];
-  });
+  const [rows, setRows] = useState<RowData[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [lifeTimes, setLifeTimes] = useState<any[]>([]);
   const [pogoPinsData, setPogoPinsData] = useState<any[]>([]);
@@ -50,10 +41,14 @@ export default function RequiredPogoPin({ selectedFacility }: { selectedFacility
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    localStorage.setItem('requiredPogoPinRows', JSON.stringify(rows));
-  }, [rows]);
+    const unsubRows = onSnapshot(collection(db, 'requiredPogoPinRows'), (snapshot) => {
+      let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RowData));
+      if (selectedFacility !== 'ALL') {
+        data = data.filter(r => (r.facility || '').trim().toUpperCase() === selectedFacility);
+      }
+      setRows(data);
+    });
 
-  useEffect(() => {
     const unsubProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
       let data = snapshot.docs.map(doc => doc.data());
       if (selectedFacility !== 'ALL') {
@@ -141,22 +136,45 @@ export default function RequiredPogoPin({ selectedFacility }: { selectedFacility
     };
   };
 
-  const handleAddRow = () => {
-    setRows([...rows, { id: Date.now().toString(), partNo: '', qty: '', remark: '', pogoPins: [] }]);
+  const handleAddRow = async () => {
+    try {
+      await addDoc(collection(db, 'requiredPogoPinRows'), {
+        partNo: '',
+        qty: '',
+        remark: '',
+        pogoPins: [],
+        facility: selectedFacility === 'ALL' ? '' : selectedFacility
+      });
+    } catch (error) {
+      console.error("Error adding document: ", error);
+    }
   };
 
-  const handleRowChange = (id: string, field: keyof RowData, value: string | number) => {
-    setRows(prevRows => prevRows.map(row => {
-      if (row.id === id) {
-        const newRow = { ...row, [field]: value };
-        return calculateRow(newRow, products, lifeTimes);
-      }
-      return row;
-    }));
+  const handleRowChange = async (id: string, field: keyof RowData, value: string | number) => {
+    const rowToUpdate = rows.find(r => r.id === id);
+    if (!rowToUpdate) return;
+    
+    const newRow = { ...rowToUpdate, [field]: value };
+    const calculatedRow = calculateRow(newRow, products, lifeTimes);
+    
+    try {
+      const docRef = doc(db, 'requiredPogoPinRows', id);
+      await updateDoc(docRef, {
+        [field]: value,
+        remark: calculatedRow.remark,
+        pogoPins: calculatedRow.pogoPins
+      });
+    } catch (error) {
+      console.error("Error updating document: ", error);
+    }
   };
 
-  const handleDeleteRow = (id: string) => {
-    setRows(rows.filter(r => r.id !== id));
+  const handleDeleteRow = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'requiredPogoPinRows', id));
+    } catch (error) {
+      console.error("Error deleting document: ", error);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,30 +182,44 @@ export default function RequiredPogoPin({ selectedFacility }: { selectedFacility
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       const bstr = evt.target?.result;
       const wb = XLSX.read(bstr, { type: 'binary' });
       const wsname = wb.SheetNames[0];
       const ws = wb.Sheets[wsname];
       const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
       
-      const newRows: RowData[] = [];
-      for (let i = 1; i < data.length; i++) {
-        const row = data[i];
-        if (row[0]) {
-          const partNo = String(row[0]);
-          const qty = Number(row[1]) || '';
-          const newRow: RowData = {
-            id: Date.now().toString() + i,
-            partNo,
-            qty,
-            remark: '',
-            pogoPins: []
-          };
-          newRows.push(calculateRow(newRow, products, lifeTimes));
+      try {
+        const batch = writeBatch(db);
+        for (let i = 1; i < data.length; i++) {
+          const row = data[i];
+          if (row[0]) {
+            const partNo = String(row[0]);
+            const qty = Number(row[1]) || '';
+            const newRow: RowData = {
+              id: '', // Not needed for addDoc
+              partNo,
+              qty,
+              remark: '',
+              pogoPins: [],
+              facility: selectedFacility === 'ALL' ? '' : selectedFacility
+            };
+            const calculatedRow = calculateRow(newRow, products, lifeTimes);
+            
+            const newDocRef = doc(collection(db, 'requiredPogoPinRows'));
+            batch.set(newDocRef, {
+              partNo: calculatedRow.partNo,
+              qty: calculatedRow.qty,
+              remark: calculatedRow.remark,
+              pogoPins: calculatedRow.pogoPins,
+              facility: calculatedRow.facility
+            });
+          }
         }
+        await batch.commit();
+      } catch (error) {
+        console.error("Error importing rows: ", error);
       }
-      setRows(prev => [...prev, ...newRows]);
     };
     reader.readAsBinaryString(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
