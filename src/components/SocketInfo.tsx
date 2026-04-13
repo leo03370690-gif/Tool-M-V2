@@ -467,9 +467,9 @@ export default function SocketInfo({ isAdmin, selectedFacility }: { isAdmin: boo
                           .sort((a, b) => b[1] - a[1])
                           .map(([group, count]) => (
                           <div key={group} className="space-y-2 group">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-zinc-600 group-hover:text-zinc-900 transition-colors truncate pr-2" title={group}>{group}</span>
-                              <span className="text-sm font-bold text-zinc-900">{count}</span>
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="text-sm font-medium text-zinc-600 group-hover:text-zinc-900 transition-colors break-words">{group}</span>
+                              <span className="text-sm font-bold text-zinc-900 shrink-0 mt-0.5">{count}</span>
                             </div>
                             <div className="h-1.5 w-full bg-zinc-100 rounded-full overflow-hidden">
                               <motion.div 
