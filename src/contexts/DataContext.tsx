@@ -10,7 +10,6 @@ interface DataContextType {
   lifeTimes: any[];
   loadBoards: any[];
   requiredPogoPinRows: any[];
-  maintenanceRecords: any[];
   loading: boolean;
 }
 
@@ -22,7 +21,6 @@ const DataContext = createContext<DataContextType>({
   lifeTimes: [],
   loadBoards: [],
   requiredPogoPinRows: [],
-  maintenanceRecords: [],
   loading: true,
 });
 
@@ -36,7 +34,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [lifeTimes, setLifeTimes] = useState<any[]>([]);
   const [loadBoards, setLoadBoards] = useState<any[]>([]);
   const [requiredPogoPinRows, setRequiredPogoPinRows] = useState<any[]>([]);
-  const [maintenanceRecords, setMaintenanceRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,7 +44,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let unsubLifeTimes: () => void;
     let unsubLoadBoards: () => void;
     let unsubRequiredPogoPinRows: () => void;
-    let unsubMaintenanceRecords: () => void;
 
     try {
       unsubProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
@@ -71,9 +67,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       unsubRequiredPogoPinRows = onSnapshot(collection(db, 'requiredPogoPinRows'), (snapshot) => {
         setRequiredPogoPinRows(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       });
-      unsubMaintenanceRecords = onSnapshot(collection(db, 'maintenanceRecords'), (snapshot) => {
-        setMaintenanceRecords(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      });
 
       // Set loading to false after a short delay to allow initial data to load
       setTimeout(() => setLoading(false), 800);
@@ -90,7 +83,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (unsubLifeTimes) unsubLifeTimes();
       if (unsubLoadBoards) unsubLoadBoards();
       if (unsubRequiredPogoPinRows) unsubRequiredPogoPinRows();
-      if (unsubMaintenanceRecords) unsubMaintenanceRecords();
     };
   }, []);
 
@@ -103,7 +95,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       lifeTimes,
       loadBoards,
       requiredPogoPinRows,
-      maintenanceRecords,
       loading
     }}>
       {children}

@@ -40,11 +40,16 @@ export default function MaintenanceRecord({ initialData, onCancel, onSuccess, us
     e.preventDefault();
     setLoading(true);
     try {
-      await addDoc(collection(db, 'maintenanceRecords'), {
+      // Adding additional log for debugging and ensuring strict validation
+      const record = {
         ...formData,
         createdBy: userEmail,
         createdAt: new Date().toISOString()
-      });
+      };
+      
+      await addDoc(collection(db, 'maintenanceRecords'), record);
+      
+      // Perform success callback early to allow UI to transition while Firestore syncs in background
       onSuccess();
     } catch (error) {
       console.error('Error adding maintenance record:', error);

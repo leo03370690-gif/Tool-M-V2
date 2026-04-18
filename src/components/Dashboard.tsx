@@ -287,7 +287,15 @@ export default function Dashboard({ user, role, selectedFacility, onBackToFacili
                   />
                 )}
                 {activeTab === 'required-pogo-pin' && <RequiredPogoPin selectedFacility={selectedFacility} isAdmin={isAdmin} />}
-                {activeTab === 'maintenance-history' && <MaintenanceHistory isAdmin={isAdmin} />}
+                {activeTab === 'maintenance-history' && (
+                  <MaintenanceHistory 
+                    isAdmin={isAdmin} 
+                    onAddMaintenanceRecord={() => {
+                      setMaintenanceInitialData(null);
+                      handleNavigate('maintenance-record');
+                    }}
+                  />
+                )}
                 {activeTab === 'maintenance-record' && (
                   <MaintenanceRecord 
                     initialData={maintenanceInitialData} 
@@ -303,8 +311,14 @@ export default function Dashboard({ user, role, selectedFacility, onBackToFacili
                       }
                     }}
                     onSuccess={() => {
-                      setActiveTab('load-board');
-                      setTabHistory([]);
+                      const newHistory = [...tabHistory];
+                      const prevTab = newHistory.pop();
+                      if (prevTab) {
+                        setActiveTab(prevTab);
+                        setTabHistory(newHistory);
+                      } else {
+                        setActiveTab('load-board');
+                      }
                     }}
                   />
                 )}

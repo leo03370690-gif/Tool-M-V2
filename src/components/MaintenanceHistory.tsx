@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { db } from '../firebase';
-import { deleteDoc, doc, updateDoc } from 'firebase/firestore';
-import { Trash2, Edit2, Check, X, Search, List, Filter, ArrowUpDown, History, Loader2 } from 'lucide-react';
+import { deleteDoc, doc, updateDoc, collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
+import { Trash2, Edit2, Check, X, Search, List, Filter, ArrowUpDown, History, Loader2, Plus } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { DoubleScrollbar } from './ui/DoubleScrollbar';
@@ -148,11 +148,42 @@ const MaintenanceRow = React.memo(({
   );
 });
 
-export default function MaintenanceHistory({ isAdmin }: { isAdmin: boolean }) {
-  const { maintenanceRecords: allRecords, loading } = useData();
+export default function MaintenanceHistory({ 
+  isAdmin,
+  onAddMaintenanceRecord
+}: { 
+  isAdmin: boolean,
+  onAddMaintenanceRecord: () => void
+}) {
+  const [allRecords, setAllRecords] = useState<MaintenanceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Implementing on-demand fetching for performance optimization
+    // Only syncing the last 500 records by default to keep initial load fast
+    const q = query(
+      collection(db, 'maintenanceRecords'), 
+      orderBy('issueDate', 'desc'),
+      limit(500) 
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const recordsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as MaintenanceRecord[];
+      setAllRecords(recordsData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching maintenance records:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
   
   const records = useMemo(() => {
-    return [...allRecords].sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
+    return allRecords;
   }, [allRecords]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -253,6 +284,13 @@ export default function MaintenanceHistory({ isAdmin }: { isAdmin: boolean }) {
           <h2 className="font-serif text-4xl italic text-zinc-900 tracking-tight">Maintenance History</h2>
           <p className="text-xs text-zinc-400 uppercase tracking-[0.2em] font-bold">Comprehensive logs of Load Board repairs</p>
         </div>
+        <button
+          onClick={onAddMaintenanceRecord}
+          className="flex items-center gap-2 rounded-xl bg-brand-primary px-6 py-3 text-sm font-bold text-white shadow-lg shadow-brand-primary/20 transition-all hover:translate-y-[-2px] hover:shadow-xl active:translate-y-[0px]"
+        >
+          <Plus className="h-4 w-4" />
+          ADD RECORD
+        </button>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between surface-card p-2">
