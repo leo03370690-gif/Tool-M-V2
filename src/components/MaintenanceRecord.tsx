@@ -17,7 +17,7 @@ interface MaintenanceRecordProps {
 }
 
 const SITES = Array.from({ length: 20 }, (_, i) => `Site ${i + 1}`);
-const STATUS_OPTIONS = ['Done', 'On-going', 'Pending'];
+const STATUS_OPTIONS = ['Done', 'On-going', 'Pending', 'Returned'];
 
 export default function MaintenanceRecord({ initialData, onCancel, onSuccess, userEmail }: MaintenanceRecordProps) {
   const [loading, setLoading] = useState(false);

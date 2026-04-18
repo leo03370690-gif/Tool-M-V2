@@ -28,7 +28,7 @@ interface MaintenanceRecord {
   createdAt: string;
 }
 
-const STATUS_OPTIONS = ['Done', 'On-going', 'Pending'];
+const STATUS_OPTIONS = ['Done', 'On-going', 'Pending', 'Returned'];
 
 const MaintenanceRow = React.memo(({ 
   record, 
@@ -101,6 +101,7 @@ const MaintenanceRow = React.memo(({
               col.key === 'status' && {
                 'text-emerald-600 font-bold': record.status === 'Done',
                 'text-amber-600 font-bold': record.status === 'On-going',
+                'text-blue-600 font-bold': record.status === 'Returned',
                 'text-zinc-400 font-bold': record.status === 'Pending'
               }
             )}>

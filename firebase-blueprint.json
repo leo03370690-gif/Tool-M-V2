@@ -133,7 +133,7 @@
         "lbType": { "type": "string" },
         "insertion": { "type": "string" },
         "vendor": { "type": "string" },
-        "status": { "type": "string", "enum": ["Done", "On-going", "Pending"] },
+        "status": { "type": "string", "enum": ["Done", "On-going", "Pending", "Returned"] },
         "site": { "type": "string" },
         "issue": { "type": "string" },
         "issueDate": { "type": "string" },
