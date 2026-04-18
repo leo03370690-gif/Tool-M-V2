@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
-import { Check, X, Loader2 } from 'lucide-react';
+import { Check, X, Loader2, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'motion/react';
 
@@ -16,11 +16,27 @@ interface MaintenanceRecordProps {
   userEmail: string;
 }
 
-const SITES = Array.from({ length: 20 }, (_, i) => `Site ${i + 1}`);
+const SITES = [...Array.from({ length: 20 }, (_, i) => `Site ${i + 1}`), 'Other'];
 const STATUS_OPTIONS = ['Done', 'On-going', 'Pending', 'Returned'];
 
 export default function MaintenanceRecord({ initialData, onCancel, onSuccess, userEmail }: MaintenanceRecordProps) {
   const [loading, setLoading] = useState(false);
+  const [selectedSites, setSelectedSites] = useState<string[]>(['Site 1']);
+  const [otherSiteReason, setOtherSiteReason] = useState('');
+  const [siteIssues, setSiteIssues] = useState<Record<string, string>>({});
+  const [isSiteDropdownOpen, setIsSiteDropdownOpen] = useState(false);
+  const siteRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (siteRef.current && !siteRef.current.contains(event.target as Node)) {
+        setIsSiteDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const [formData, setFormData] = useState({
     facility: initialData?.facility || '',
     lbNo: initialData?.lbName || '',
@@ -29,23 +45,60 @@ export default function MaintenanceRecord({ initialData, onCancel, onSuccess, us
     insertion: initialData?.insertion || '',
     vendor: '',
     status: 'Pending',
-    site: SITES[0],
     issue: '',
     issueDate: new Date().toISOString().split('T')[0],
     repairDate: '',
     action: ''
   });
 
+  const toggleSite = (site: string) => {
+    if (selectedSites.includes(site)) {
+      setSelectedSites(selectedSites.filter(s => s !== site));
+      // Cleanup issue state when site is unselected
+      const newIssues = { ...siteIssues };
+      delete newIssues[site];
+      setSiteIssues(newIssues);
+    } else {
+      setSelectedSites([...selectedSites, site]);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (selectedSites.length === 0) {
+      alert("Please select at least one site.");
+      return;
+    }
+    
+    // Validate that every selected site has an issue description
+    const missingIssue = selectedSites.find(s => !siteIssues[s] || siteIssues[s].trim() === '');
+    if (missingIssue) {
+      const siteName = missingIssue === 'Other' ? (otherSiteReason || 'Other site') : missingIssue;
+      alert(`Please enter an issue description for ${siteName}.`);
+      return;
+    }
+    
     setLoading(true);
     try {
-      // Adding additional log for debugging and ensuring strict validation
+      const finalSitesStr = selectedSites
+        .map(s => s === 'Other' ? (otherSiteReason ? `Other (${otherSiteReason})` : 'Other') : s)
+        .join(', ');
+
+      const combinedIssues = selectedSites
+        .map(s => {
+           const siteName = s === 'Other' ? (otherSiteReason ? `Other (${otherSiteReason})` : 'Other') : s;
+           return `[${siteName}] ${siteIssues[s]}`;
+        })
+        .join(' • ');
+
       const record = {
         ...formData,
+        site: finalSitesStr,
+        issue: combinedIssues,
         createdBy: userEmail,
         createdAt: new Date().toISOString()
       };
+
       
       await addDoc(collection(db, 'maintenanceRecords'), record);
       
@@ -177,31 +230,88 @@ export default function MaintenanceRecord({ initialData, onCancel, onSuccess, us
           />
         </div>
 
-        <div className="space-y-2 md:col-span-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Site</label>
-              <select
-                value={formData.site}
-                onChange={(e) => setFormData({ ...formData, site: e.target.value })}
-                className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all appearance-none"
+        <div className="space-y-6 md:col-span-2">
+          <div className="space-y-2 relative" ref={siteRef}>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Site(s)</label>
+            <button
+              type="button"
+              onClick={() => setIsSiteDropdownOpen(!isSiteDropdownOpen)}
+              className="w-full flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all text-left"
+            >
+              <span className="truncate text-zinc-700">
+                {selectedSites.length > 0 ? selectedSites.join(', ') : 'Select Sites'}
+              </span>
+              <ChevronDown className={cn("h-4 w-4 opacity-50 transition-transform shrink-0", isSiteDropdownOpen && "rotate-180")} />
+            </button>
+            
+            {isSiteDropdownOpen && (
+              <div className="absolute top-full left-0 right-0 mt-2 z-50 max-h-60 overflow-y-auto rounded-xl border border-zinc-200 bg-white shadow-xl p-1 custom-scrollbar">
+                {SITES.map(s => {
+                  const isSelected = selectedSites.includes(s);
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); toggleSite(s); }}
+                      className="w-full flex items-center px-3 py-2.5 rounded-lg hover:bg-zinc-50 transition-colors text-zinc-700 text-sm text-left"
+                    >
+                      <div className={cn(
+                        "w-4 h-4 rounded-[4px] border mr-3 flex items-center justify-center flex-shrink-0 transition-colors",
+                        isSelected ? "border-brand-primary bg-brand-primary text-white" : "border-zinc-300 bg-white"
+                      )}>
+                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                      </div>
+                      <span className="truncate">{s}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            
+            {/* Other Reason Input */}
+            {selectedSites.includes('Other') && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }} 
+                animate={{ opacity: 1, height: 'auto' }} 
+                className="pt-2"
               >
-                {SITES.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Issue Description</label>
-              <input
-                type="text"
-                value={formData.issue}
-                onChange={(e) => setFormData({ ...formData, issue: e.target.value })}
-                className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all"
-                placeholder="Enter abnormality reason"
-              />
-            </div>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-brand-primary/80 mb-1 block">Other Site Details</label>
+                <input
+                  type="text"
+                  required={selectedSites.includes('Other')}
+                  value={otherSiteReason}
+                  onChange={(e) => setOtherSiteReason(e.target.value)}
+                  className="w-full rounded-xl border border-brand-primary/30 bg-brand-primary/5 px-4 py-3 text-sm focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all placeholder:text-brand-primary/40"
+                  placeholder="Enter reason or site name"
+                />
+              </motion.div>
+            )}
           </div>
+
+          {/* Dynamic Issue Inputs by Site */}
+          {selectedSites.length > 0 && (
+            <div className="space-y-4 p-5 rounded-2xl border border-zinc-200 bg-zinc-50/50">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Issue Descriptions by Site</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {selectedSites.map(site => {
+                  const displayName = site === 'Other' ? (otherSiteReason ? `Other (${otherSiteReason})` : 'Other') : site;
+                  return (
+                    <div key={site} className="space-y-1.5 p-4 bg-white rounded-xl border border-zinc-100 shadow-sm transition-all focus-within:ring-2 focus-within:ring-brand-primary/20 focus-within:border-brand-primary/30">
+                      <span className="text-xs font-bold text-zinc-700 block line-clamp-1">{displayName}</span>
+                      <input
+                        type="text"
+                        required
+                        value={siteIssues[site] || ''}
+                        onChange={(e) => setSiteIssues({ ...siteIssues, [site]: e.target.value })}
+                        className="w-full bg-transparent text-sm focus:outline-none text-zinc-600 placeholder:text-zinc-300"
+                        placeholder="Enter abnormality reason..."
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2 md:col-span-2">
