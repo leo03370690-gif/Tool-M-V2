@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { db } from '../firebase';
 import { deleteDoc, doc, updateDoc, collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
-import { Trash2, Edit2, Check, X, Search, List, Filter, ArrowUpDown, History, Loader2, Plus } from 'lucide-react';
+import { Trash2, Edit2, Check, X, Search, List, Filter, ArrowUpDown, History, Loader2, Plus, Download } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { DoubleScrollbar } from './ui/DoubleScrollbar';
@@ -171,41 +171,15 @@ export default function MaintenanceHistory({
   onAddMaintenanceRecord: () => void,
   onLBClick?: (lbNo: string) => void
 }) {
-  const [allRecords, setAllRecords] = useState<MaintenanceRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Optimization: Fetch facility-specific data directly from Firestore for speed and scale
-    // If no facility is selected, default to all (though unlikely in this app structure)
-    const baseRef = collection(db, 'maintenanceRecords');
-    
-    // We fetch a larger limit since it's filtered by facility now
-    const q = query(
-      baseRef, 
-      orderBy('issueDate', 'desc'),
-      limit(1000) 
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const recordsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as MaintenanceRecord[];
-      setAllRecords(recordsData);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching maintenance records:", error);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
+  const { maintenanceRecords: allRecords, loading } = useData();
   
   const records = useMemo(() => {
     // Filter locally by selectedFacility to ensure reactive behavior without complex index dependencies
     // Using case-insensitive comparison to avoid issues with SIGURD vs Sigurd
     const targetFacility = selectedFacility?.toLowerCase();
-    return allRecords.filter(r => !targetFacility || r.facility?.toLowerCase() === targetFacility);
+    const facilityRecords = allRecords.filter(r => !targetFacility || r.facility?.toLowerCase() === targetFacility);
+    // Ensure they are sorted by default like the previous query
+    return facilityRecords.sort((a, b) => new Date(b.issueDate || '').getTime() - new Date(a.issueDate || '').getTime());
   }, [allRecords, selectedFacility]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -296,6 +270,45 @@ export default function MaintenanceHistory({
   const uniqueLBNo = useMemo(() => Array.from(new Set(records.map(r => r.lbNo))).sort(), [records]);
   const uniqueSites = useMemo(() => Array.from(new Set(records.map(r => r.site))).sort(), [records]);
 
+  const handleExportCSV = () => {
+    if (filteredRecords.length === 0) return;
+
+    const headers = [
+      'LB No.', 'Facility', 'SNI No.', 'LB Type', 'Status', 
+      'Site', 'Issue Date', 'Repair Date', 'Issue Description', 
+      'Action Taken', 'Created By', 'Created At'
+    ];
+    
+    const csvData = filteredRecords.map(r => [
+      `"${r.lbNo || ''}"`,
+      `"${r.facility || ''}"`,
+      `"${r.sniNo || ''}"`,
+      `"${r.lbType || ''}"`,
+      `"${r.status || ''}"`,
+      `"${r.site || ''}"`,
+      `"${r.issueDate || ''}"`,
+      `"${r.repairDate || ''}"`,
+      `"${(r.issue || '').replace(/"/g, '""')}"`,
+      `"${(r.action || '').replace(/"/g, '""')}"`,
+      `"${r.createdBy || ''}"`,
+      `"${r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}"`
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Maintenance_History_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -311,13 +324,23 @@ export default function MaintenanceHistory({
           <h2 className="font-serif text-4xl italic text-zinc-900 tracking-tight">Maintenance History</h2>
           <p className="text-xs text-zinc-400 uppercase tracking-[0.2em] font-bold">Comprehensive logs of Load Board repairs</p>
         </div>
-        <button
-          onClick={onAddMaintenanceRecord}
-          className="flex items-center gap-2 rounded-xl bg-brand-primary px-6 py-3 text-sm font-bold text-white shadow-lg shadow-brand-primary/20 transition-all hover:translate-y-[-2px] hover:shadow-xl active:translate-y-[0px]"
-        >
-          <Plus className="h-4 w-4" />
-          ADD RECORD
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportCSV}
+            disabled={filteredRecords.length === 0}
+            className="flex items-center gap-2 rounded-xl bg-zinc-900 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-black/10 transition-all hover:bg-zinc-800 hover:translate-y-[-2px] hover:shadow-xl active:translate-y-[0px] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">EXPORT</span>
+          </button>
+          <button
+            onClick={onAddMaintenanceRecord}
+            className="flex items-center gap-2 rounded-xl bg-brand-primary px-6 py-3 text-sm font-bold text-white shadow-lg shadow-brand-primary/20 transition-all hover:translate-y-[-2px] hover:shadow-xl active:translate-y-[0px]"
+          >
+            <Plus className="h-4 w-4" />
+            ADD RECORD
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between surface-card p-2">
