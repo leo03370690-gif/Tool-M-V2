@@ -33,7 +33,8 @@ const LoadBoardRow = React.memo(({
   setEditingId, 
   handleUpdate, 
   setModal,
-  setSaveModal
+  setSaveModal,
+  onAddMaintenanceClick
 }: { 
   lb: LoadBoard, 
   idx: number, 
@@ -43,7 +44,8 @@ const LoadBoardRow = React.memo(({
   setEditingId: (id: string | null) => void, 
   handleUpdate: (id: string, data: any) => void, 
   setModal: (modal: any) => void,
-  setSaveModal: (modal: any) => void
+  setSaveModal: (modal: any) => void,
+  onAddMaintenanceClick: (lb: LoadBoard) => void
 }) => {
   const [localData, setLocalData] = useState<Partial<LoadBoard>>(lb);
   
@@ -74,10 +76,13 @@ const LoadBoardRow = React.memo(({
               autoFocus={col.key === 'facility'}
             />
           ) : (
-            <span className={cn(
-              "font-medium",
-              col.key === 'lbName' ? "text-brand-primary font-bold" : "text-zinc-500"
-            )}>
+            <span 
+              className={cn(
+                "font-medium transition-colors cursor-pointer",
+                col.key === 'lbName' ? "text-brand-primary font-bold hover:text-brand-primary/70" : "text-zinc-500"
+              )}
+              onClick={() => col.key === 'lbName' && onAddMaintenanceClick(lb)}
+            >
               {lb[col.key as keyof LoadBoard]}
             </span>
           )}
@@ -112,7 +117,15 @@ const LoadBoardRow = React.memo(({
   );
 });
 
-export default function LoadBoardInfo({ isAdmin, selectedFacility }: { isAdmin: boolean, selectedFacility: string }) {
+export default function LoadBoardInfo({ 
+  isAdmin, 
+  selectedFacility,
+  onAddMaintenanceRecord
+}: { 
+  isAdmin: boolean, 
+  selectedFacility: string,
+  onAddMaintenanceRecord: (data: any) => void
+}) {
   const { loadBoards: allLoadBoards, loading } = useData();
   
   const loadBoards = useMemo(() => {
@@ -150,6 +163,7 @@ export default function LoadBoardInfo({ isAdmin, selectedFacility }: { isAdmin: 
 
   const [modal, setModal] = useState<{isOpen: boolean, id: string | null}>({ isOpen: false, id: null });
   const [saveModal, setSaveModal] = useState<{isOpen: boolean, id: string | null, data: any | null}>({ isOpen: false, id: null, data: null });
+  const [maintenanceModal, setMaintenanceModal] = useState<{isOpen: boolean, lb: LoadBoard | null}>({ isOpen: false, lb: null });
 
   const handleAdd = async () => {
     if (!newLoadBoard.projectName) return;
@@ -443,6 +457,7 @@ export default function LoadBoardInfo({ isAdmin, selectedFacility }: { isAdmin: 
                       handleUpdate={handleUpdate}
                       setModal={setModal}
                       setSaveModal={setSaveModal}
+                      onAddMaintenanceClick={(lb) => setMaintenanceModal({ isOpen: true, lb })}
                     />
                   ))}
                   {filteredLoadBoards.length > displayCount && (
@@ -557,6 +572,53 @@ export default function LoadBoardInfo({ isAdmin, selectedFacility }: { isAdmin: 
                   className="flex items-center gap-2 rounded-xl bg-red-600 px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-red-700 shadow-lg shadow-red-600/20"
                 >
                   Delete Record
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      
+      {/* Maintenance Record Modal */}
+      <AnimatePresence>
+        {maintenanceModal.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/60 p-4 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-md rounded-[2rem] bg-white p-8 shadow-2xl"
+            >
+              <div className="mb-6 flex items-center gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-zinc-100 text-brand-primary">
+                  <BarChart2 className="h-6 w-6" />
+                </div>
+                <h3 className="text-xl font-bold text-zinc-900">Maintenance Record</h3>
+              </div>
+              <p className="mb-8 text-sm leading-relaxed text-zinc-600">
+                Would you like to add a new maintenance record for <span className="font-bold text-brand-primary">{maintenanceModal.lb?.lbName}</span>?
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setMaintenanceModal({ isOpen: false, lb: null })}
+                  className="rounded-xl px-6 py-2.5 text-sm font-bold text-zinc-500 transition-colors hover:bg-zinc-100"
+                >
+                  No, Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (maintenanceModal.lb) {
+                      onAddMaintenanceRecord({
+                        facility: maintenanceModal.lb.facility,
+                        lbName: maintenanceModal.lb.lbName,
+                        insertion: maintenanceModal.lb.insertion
+                      });
+                    }
+                    setMaintenanceModal({ isOpen: false, lb: null });
+                  }}
+                  className="flex items-center gap-2 rounded-xl bg-zinc-900 px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-zinc-800 shadow-lg shadow-black/10"
+                >
+                  Yes, Add Record
                 </button>
               </div>
             </motion.div>

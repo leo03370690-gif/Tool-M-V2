@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   DatabaseBackup,
   Layers,
+  History,
   Bell,
   Search as SearchIcon,
   Calculator,
@@ -37,6 +38,8 @@ const SettingsTab = lazy(() => import('./Settings'));
 const DataManagement = lazy(() => import('./DataManagement'));
 const AuditLogs = lazy(() => import('./AuditLogs'));
 const RequiredPogoPin = lazy(() => import('./RequiredPogoPin'));
+const MaintenanceRecord = lazy(() => import('./MaintenanceRecord'));
+const MaintenanceHistory = lazy(() => import('./MaintenanceHistory'));
 
 interface DashboardProps {
   user: FirebaseUser;
@@ -45,11 +48,12 @@ interface DashboardProps {
   onBackToFacility: () => void;
 }
 
-type Tab = 'product' | 'socket' | 'change-kit' | 'pogo-pin' | 'life-time' | 'load-board' | 'required-pogo-pin' | 'users' | 'settings' | 'data-management' | 'audit-logs';
+type Tab = 'product' | 'socket' | 'change-kit' | 'pogo-pin' | 'life-time' | 'load-board' | 'required-pogo-pin' | 'users' | 'settings' | 'data-management' | 'audit-logs' | 'maintenance-history' | 'maintenance-record';
 
 export default function Dashboard({ user, role, selectedFacility, onBackToFacility }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('product');
   const [tabHistory, setTabHistory] = useState<Tab[]>([]);
+  const [maintenanceInitialData, setMaintenanceInitialData] = useState<any>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -67,6 +71,7 @@ export default function Dashboard({ user, role, selectedFacility, onBackToFacili
     { id: 'pogo-pin', label: 'Pogo Pin', icon: Database },
     { id: 'life-time', label: 'Life Time', icon: Clock },
     { id: 'load-board', label: 'Load Board', icon: Layers },
+    { id: 'maintenance-history', label: 'Maintenance History', icon: History },
     { id: 'required-pogo-pin', label: 'Required Pogo Pin', icon: Calculator },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -271,8 +276,38 @@ export default function Dashboard({ user, role, selectedFacility, onBackToFacili
                 {activeTab === 'change-kit' && <ChangeKitInfo isAdmin={isAdmin} selectedFacility={selectedFacility} />}
                 {activeTab === 'pogo-pin' && <PogoPinInfo isAdmin={isAdmin} selectedFacility={selectedFacility} />}
                 {activeTab === 'life-time' && <LifeTimeInfo isAdmin={isAdmin} selectedFacility={selectedFacility} />}
-                {activeTab === 'load-board' && <LoadBoardInfo isAdmin={isAdmin} selectedFacility={selectedFacility} />}
+                {activeTab === 'load-board' && (
+                  <LoadBoardInfo 
+                    isAdmin={isAdmin} 
+                    selectedFacility={selectedFacility} 
+                    onAddMaintenanceRecord={(data) => {
+                      setMaintenanceInitialData(data);
+                      handleNavigate('maintenance-record');
+                    }}
+                  />
+                )}
                 {activeTab === 'required-pogo-pin' && <RequiredPogoPin selectedFacility={selectedFacility} isAdmin={isAdmin} />}
+                {activeTab === 'maintenance-history' && <MaintenanceHistory isAdmin={isAdmin} />}
+                {activeTab === 'maintenance-record' && (
+                  <MaintenanceRecord 
+                    initialData={maintenanceInitialData} 
+                    userEmail={user.email || ''} 
+                    onCancel={() => {
+                      const newHistory = [...tabHistory];
+                      const prevTab = newHistory.pop();
+                      if (prevTab) {
+                        setActiveTab(prevTab);
+                        setTabHistory(newHistory);
+                      } else {
+                        setActiveTab('load-board');
+                      }
+                    }}
+                    onSuccess={() => {
+                      setActiveTab('load-board');
+                      setTabHistory([]);
+                    }}
+                  />
+                )}
                 {activeTab === 'data-management' && <DataManagement />}
                 {activeTab === 'settings' && <SettingsTab />}
                 {activeTab === 'users' && <UserManagement />}

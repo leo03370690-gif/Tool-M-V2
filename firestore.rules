@@ -140,6 +140,21 @@ service cloud.firestore {
              (!('pogoPins' in data) || data.pogoPins is list);
     }
 
+    function isValidMaintenanceRecord(data) {
+      return checkStringLength(data.get('facility', ''), 200) &&
+             checkStringLength(data.get('lbNo', ''), 200) &&
+             checkStringLength(data.get('status', ''), 50) &&
+             checkStringLength(data.get('issueDate', ''), 50) &&
+             checkStringLength(data.get('sniNo', ''), 200) &&
+             checkStringLength(data.get('lbType', ''), 200) &&
+             checkStringLength(data.get('insertion', ''), 200) &&
+             checkStringLength(data.get('vendor', ''), 200) &&
+             checkStringLength(data.get('site', ''), 200) &&
+             checkStringLength(data.get('issue', ''), 1000) &&
+             checkStringLength(data.get('repairDate', ''), 50) &&
+             checkStringLength(data.get('action', ''), 1000);
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -190,6 +205,12 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if isAdmin() && isValidRequiredPogoPinRow(request.resource.data);
       allow delete: if isAdmin();
+    }
+
+    match /maintenanceRecords/{recordId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidMaintenanceRecord(request.resource.data);
+      allow update, delete: if isAdmin();
     }
 
     match /auditLogs/{logId} {

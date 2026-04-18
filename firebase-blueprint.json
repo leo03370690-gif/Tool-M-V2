@@ -122,6 +122,28 @@
         "targetReturnDate": { "type": "string" }
       }
     },
+    "MaintenanceRecord": {
+      "title": "MaintenanceRecord",
+      "description": "Load board maintenance history",
+      "type": "object",
+      "properties": {
+        "facility": { "type": "string" },
+        "lbNo": { "type": "string" },
+        "sniNo": { "type": "string" },
+        "lbType": { "type": "string" },
+        "insertion": { "type": "string" },
+        "vendor": { "type": "string" },
+        "status": { "type": "string", "enum": ["Done", "On-going", "Pending"] },
+        "site": { "type": "string" },
+        "issue": { "type": "string" },
+        "issueDate": { "type": "string" },
+        "repairDate": { "type": "string" },
+        "action": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["facility", "lbNo", "status", "issueDate"]
+    },
     "RequiredPogoPinRow": {
       "title": "RequiredPogoPinRow",
       "description": "Required pogo pin row data",
@@ -167,6 +189,10 @@
     "/requiredPogoPinRows/{rowId}": {
       "schema": "RequiredPogoPinRow",
       "description": "Required pogo pin rows"
+    },
+    "/maintenanceRecords/{recordId}": {
+      "schema": "MaintenanceRecord",
+      "description": "Load board maintenance history records"
     }
   }
 }
