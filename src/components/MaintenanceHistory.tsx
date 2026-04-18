@@ -190,7 +190,9 @@ export default function MaintenanceHistory({
   
   const records = useMemo(() => {
     // Filter locally by selectedFacility to ensure reactive behavior without complex index dependencies
-    return allRecords.filter(r => !selectedFacility || r.facility === selectedFacility);
+    // Using case-insensitive comparison to avoid issues with SIGURD vs Sigurd
+    const targetFacility = selectedFacility?.toLowerCase();
+    return allRecords.filter(r => !targetFacility || r.facility?.toLowerCase() === targetFacility);
   }, [allRecords, selectedFacility]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
