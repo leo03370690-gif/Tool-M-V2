@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { collection, onSnapshot, query } from 'firebase/firestore';
+import { collection, onSnapshot, query, limit, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 
 interface DataContextType {
@@ -71,7 +71,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       unsubRequiredPogoPinRows = onSnapshot(collection(db, 'requiredPogoPinRows'), (snapshot) => {
         setRequiredPogoPinRows(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       });
-      unsubMaintenanceRecords = onSnapshot(collection(db, 'maintenanceRecords'), (snapshot) => {
+      // Limit maintenance records to the latest 500 to prevent massive read spikes
+      const maintQuery = query(collection(db, 'maintenanceRecords'), orderBy('issueDate', 'desc'), limit(500));
+      unsubMaintenanceRecords = onSnapshot(maintQuery, (snapshot) => {
         setMaintenanceRecords(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       });
 

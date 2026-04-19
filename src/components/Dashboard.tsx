@@ -24,7 +24,8 @@ import {
   Menu,
   X,
   Loader2,
-  ArrowLeft
+  ArrowLeft,
+  BarChart2
 } from 'lucide-react';
 
 const ProductInfo = lazy(() => import('./ProductInfo'));
@@ -41,6 +42,7 @@ const RequiredPogoPin = lazy(() => import('./RequiredPogoPin'));
 const MaintenanceRecord = lazy(() => import('./MaintenanceRecord'));
 const MaintenanceHistory = lazy(() => import('./MaintenanceHistory'));
 const LoadBoardHistory = lazy(() => import('./LoadBoardHistory'));
+const AnalyticsDashboard = lazy(() => import('./AnalyticsDashboard'));
 
 interface DashboardProps {
   user: FirebaseUser;
@@ -49,7 +51,7 @@ interface DashboardProps {
   onBackToFacility: () => void;
 }
 
-type Tab = 'product' | 'socket' | 'change-kit' | 'pogo-pin' | 'life-time' | 'load-board' | 'required-pogo-pin' | 'users' | 'settings' | 'data-management' | 'audit-logs' | 'maintenance-history' | 'maintenance-record' | 'lb-history';
+type Tab = 'product' | 'socket' | 'change-kit' | 'pogo-pin' | 'life-time' | 'load-board' | 'required-pogo-pin' | 'users' | 'settings' | 'data-management' | 'audit-logs' | 'maintenance-history' | 'maintenance-record' | 'lb-history' | 'analytics';
 
 export default function Dashboard({ user, role, selectedFacility, onBackToFacility }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('product');
@@ -67,6 +69,7 @@ export default function Dashboard({ user, role, selectedFacility, onBackToFacili
   };
 
   const menuItems = [
+    { id: 'analytics', label: 'Analytics', icon: BarChart2 },
     { id: 'product', label: 'Product Info', icon: Box },
     { id: 'socket', label: 'Socket Info', icon: Cpu },
     { id: 'change-kit', label: 'Change Kit', icon: Wrench },
@@ -273,6 +276,7 @@ export default function Dashboard({ user, role, selectedFacility, onBackToFacili
                   <Loader2 className="h-8 w-8 animate-spin text-zinc-300" />
                 </div>
               }>
+                {activeTab === 'analytics' && <AnalyticsDashboard />}
                 {activeTab === 'product' && <ProductInfo isAdmin={isAdmin} selectedFacility={selectedFacility} onNavigate={(tab) => handleNavigate(tab as Tab)} />}
                 {activeTab === 'socket' && <SocketInfo isAdmin={isAdmin} selectedFacility={selectedFacility} />}
                 {activeTab === 'change-kit' && <ChangeKitInfo isAdmin={isAdmin} selectedFacility={selectedFacility} />}

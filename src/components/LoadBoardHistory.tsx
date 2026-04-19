@@ -26,20 +26,39 @@ interface MaintenanceRecord {
 }
 
 export default function LoadBoardHistory({ lbNo, onBack }: { lbNo: string, onBack: () => void }) {
-  const { loadBoards, maintenanceRecords } = useData();
+  const { loadBoards } = useData();
+  const [records, setRecords] = useState<MaintenanceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Find master data for this LB
   const lbDetails = loadBoards.find(lb => lb.lbName === lbNo) || loadBoards.find(lb => lb.lbNo === lbNo);
 
-  const records = useMemo(() => {
-    if (!lbNo || !maintenanceRecords) return [];
-    const filtered = maintenanceRecords.filter(r => r.lbNo === lbNo);
-    return filtered.sort((a, b) => new Date(b.issueDate || '').getTime() - new Date(a.issueDate || '').getTime());
-  }, [maintenanceRecords, lbNo]);
+  useEffect(() => {
+    if (!lbNo) return;
 
-  // Loading state isn't strictly necessary if it comes from context synchronously,
-  // but we can just use the context's loading if needed (though it's usually already false if the tab is open).
-  const loading = !maintenanceRecords;
+    const q = query(
+      collection(db, 'maintenanceRecords'),
+      where('lbNo', '==', lbNo)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const recordsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as MaintenanceRecord[];
+      
+      // Sort in descending order (newest first)
+      recordsData.sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
+      
+      setRecords(recordsData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching LB history:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [lbNo]);
 
   // Calculate Health Metrics
   const healthStats = useMemo(() => {
