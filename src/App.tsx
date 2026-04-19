@@ -12,6 +12,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { DataProvider } from './contexts/DataContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 
+const ADMIN_EMAILS = ['leo03370690@gmail.com', 'leo.lo@tooling.local'];
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<string | null>(null);
@@ -36,16 +38,15 @@ export default function App() {
           if (docSnap.exists()) {
             setRole(docSnap.data().role);
           } else {
-            // Check if it's the owner or the default admin by email/username
+            // Check if it's a hardcoded admin email
             const userEmail = currentUser.email?.toLowerCase();
-            const isOwner = userEmail === 'leo03370690@gmail.com';
-            const isDefaultAdmin = userEmail === 'leo.lo@tooling.local';
+            const isHardcodedAdmin = userEmail ? ADMIN_EMAILS.includes(userEmail) : false;
 
-            if (isOwner || isDefaultAdmin) {
+            if (isHardcodedAdmin) {
               setRole('admin');
               try {
                 await setDoc(doc(db, 'users', currentUser.uid), {
-                  username: isOwner ? 'Owner' : 'Leo.Lo',
+                  username: userEmail === 'leo03370690@gmail.com' ? 'Owner' : 'Leo.Lo',
                   role: 'admin',
                   createdAt: new Date().toISOString()
                 });
@@ -65,11 +66,9 @@ export default function App() {
           if (error.code === 'resource-exhausted' || error.message?.includes('quota')) {
             setQuotaExceeded(true);
           }
-          // Fallback for default admin even if snapshot fails
+          // Fallback for hardcoded admin emails if snapshot fails
           const userEmail = currentUser.email?.toLowerCase();
-          const isOwner = userEmail === 'leo03370690@gmail.com';
-          const isDefaultAdmin = userEmail === 'leo.lo@tooling.local';
-          if (isOwner || isDefaultAdmin) {
+          if (userEmail && ADMIN_EMAILS.includes(userEmail)) {
             setRole('admin');
           } else {
             setRole(null);

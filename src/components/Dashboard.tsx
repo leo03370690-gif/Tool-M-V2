@@ -1,4 +1,5 @@
 import React, { useState, Suspense, lazy } from 'react';
+import ErrorBoundary from './ErrorBoundary';
 import { User as FirebaseUser, signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { cn } from '../lib/utils';
@@ -271,6 +272,7 @@ export default function Dashboard({ user, role, selectedFacility, onBackToFacili
               transition={{ duration: 0.2 }}
               className="rounded-2xl md:rounded-3xl bg-white p-4 md:p-10 card-shadow ring-1 ring-black/5 min-h-[calc(100vh-8rem)] md:min-h-[calc(100vh-10rem)]"
             >
+              <ErrorBoundary>
               <Suspense fallback={
                 <div className="flex h-full items-center justify-center min-h-[400px]">
                   <Loader2 className="h-8 w-8 animate-spin text-zinc-300" />
@@ -357,6 +359,7 @@ export default function Dashboard({ user, role, selectedFacility, onBackToFacili
                 {activeTab === 'users' && <UserManagement />}
                 {activeTab === 'audit-logs' && <AuditLogs />}
               </Suspense>
+              </ErrorBoundary>
             </motion.div>
           </AnimatePresence>
         </div>

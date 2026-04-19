@@ -169,9 +169,14 @@ export default function LoadBoardInfo({
 
   const handleAdd = async () => {
     if (!newLoadBoard.projectName) return;
-    await addDoc(collection(db, 'loadBoards'), newLoadBoard);
-    setNewLoadBoard({});
-    setEditingId(null);
+    try {
+      await addDoc(collection(db, 'loadBoards'), newLoadBoard);
+      setNewLoadBoard({});
+      setEditingId(null);
+    } catch (err) {
+      console.error('Error adding load board record:', err);
+      alert('Failed to add record. Please try again.');
+    }
   };
 
   const handleUpdate = async (id: string, data: Partial<LoadBoard>) => {
@@ -189,8 +194,13 @@ export default function LoadBoardInfo({
 
   const handleDelete = async () => {
     if (modal.id) {
-      await deleteDoc(doc(db, 'loadBoards', modal.id));
-      setModal({ isOpen: false, id: null });
+      try {
+        await deleteDoc(doc(db, 'loadBoards', modal.id));
+        setModal({ isOpen: false, id: null });
+      } catch (err) {
+        console.error('Error deleting load board record:', err);
+        alert('Failed to delete record. Please try again.');
+      }
     }
   };
 

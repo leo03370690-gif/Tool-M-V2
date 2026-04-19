@@ -149,23 +149,37 @@ export default function ChangeKitInfo({ isAdmin, selectedFacility }: { isAdmin: 
 
   const handleAdd = async () => {
     if (!newKit.toolsId) return;
-    await addDoc(collection(db, 'changeKits'), {
-      ...newKit,
-      facility: selectedFacility === 'ALL' ? (newKit.facility || '') : selectedFacility
-    });
-    setNewKit({});
-    setEditingId(null);
+    try {
+      await addDoc(collection(db, 'changeKits'), {
+        ...newKit,
+        facility: selectedFacility === 'ALL' ? (newKit.facility || '') : selectedFacility
+      });
+      setNewKit({});
+      setEditingId(null);
+    } catch (err) {
+      console.error('Error adding change kit:', err);
+      alert('Failed to add record. Please try again.');
+    }
   };
 
   const handleUpdate = async (id: string, data: Partial<ChangeKit>) => {
-    await updateDoc(doc(db, 'changeKits', id), data);
-    setEditingId(null);
+    try {
+      await updateDoc(doc(db, 'changeKits', id), data);
+      setEditingId(null);
+    } catch (err) {
+      console.error('Error updating change kit:', err);
+      alert('Failed to update record. Please try again.');
+    }
   };
 
   const handleDelete = async () => {
-    if (modal.id) {
+    if (!modal.id) return;
+    try {
       await deleteDoc(doc(db, 'changeKits', modal.id));
       setModal({ isOpen: false, id: null });
+    } catch (err) {
+      console.error('Error deleting change kit:', err);
+      alert('Failed to delete record. Please try again.');
     }
   };
 

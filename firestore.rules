@@ -143,7 +143,7 @@ service cloud.firestore {
     function isValidMaintenanceRecord(data) {
       return checkStringLength(data.get('facility', ''), 200) &&
              checkStringLength(data.get('lbNo', ''), 200) &&
-             checkStringLength(data.get('status', ''), 50) &&
+             (data.get('status', '') in ['Sent', 'Repairing', 'Repaired', 'Returned', 'Closed', '']) &&
              checkStringLength(data.get('issueDate', ''), 50) &&
              checkStringLength(data.get('sniNo', ''), 200) &&
              checkStringLength(data.get('lbType', ''), 200) &&
@@ -209,16 +209,14 @@ service cloud.firestore {
 
     match /maintenanceRecords/{recordId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidMaintenanceRecord(request.resource.data);
+      allow create: if isAdmin() && isValidMaintenanceRecord(request.resource.data);
       allow update, delete: if isAdmin();
     }
 
     match /auditLogs/{logId} {
       allow read: if isAdmin();
-      // Even admins shouldn't normally edit audit logs, but leaving write open to isAdmin per previous spec.
-      // Should add a basic length check to prevent massive log bombs.
-      allow write: if isAdmin() && checkStringLength(request.resource.data.get('action', ''), 500);
-      allow delete: if isAdmin();
+      allow create: if isAdmin() && checkStringLength(request.resource.data.get('action', ''), 500);
+      // No update or delete — audit logs are immutable once written
     }
   }
 }

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { auth, db } from '../firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../firebase';
 import { cn } from '../lib/utils';
 import { LogIn, Loader2, ShieldCheck, Lock, User, Mail, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -23,45 +22,9 @@ export default function Login() {
 
     const trimmedUsername = username.trim();
     const email = trimmedUsername.includes('@') ? trimmedUsername.toLowerCase() : `${trimmedUsername.toLowerCase().replace(/\s+/g, '.')}@tooling.local`;
-    
-    console.log(`Attempting login with email: ${email}`);
 
     try {
-      let userCredential;
-      try {
-        userCredential = await signInWithEmailAndPassword(auth, email, password);
-      } catch (err: any) {
-        if (trimmedUsername.toLowerCase() === 'leo.lo' && password === '123456') {
-          try {
-            userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          } catch (createErr: any) {
-            if (createErr.code === 'auth/email-already-in-use') {
-              throw new Error('Invalid password');
-            }
-            throw createErr;
-          }
-        } else {
-          throw err;
-        }
-      }
-
-      const isDefaultAdmin = trimmedUsername.toLowerCase() === 'leo.lo' && password === '123456';
-      if (isDefaultAdmin && userCredential) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
-          if (!userDoc.exists()) {
-            await setDoc(doc(db, 'users', userCredential.user.uid), {
-              username: 'Leo.Lo',
-              email: email,
-              role: 'admin',
-              createdAt: new Date().toISOString()
-            });
-          }
-        } catch (dbErr: any) {
-          console.error("Database error during login:", dbErr);
-          // Don't block login for admins if DB write fails due to quota
-        }
-      }
+      await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
       if (err.code === 'resource-exhausted' || err.message?.includes('quota')) {
         setError('系統寫入配額已滿，暫時無法處理新用戶登入。請稍後再試。');

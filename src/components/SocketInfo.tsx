@@ -177,23 +177,38 @@ export default function SocketInfo({ isAdmin, selectedFacility }: { isAdmin: boo
 
   const handleAdd = async () => {
     if (!newSocket.toolsId) return;
-    await addDoc(collection(db, 'sockets'), {
-      ...newSocket,
-      facility: selectedFacility === 'ALL' ? (newSocket.facility || '') : selectedFacility
-    });
-    setNewSocket({});
-    setEditingId(null);
+    try {
+      await addDoc(collection(db, 'sockets'), {
+        ...newSocket,
+        facility: selectedFacility === 'ALL' ? (newSocket.facility || '') : selectedFacility
+      });
+      setNewSocket({});
+      setEditingId(null);
+    } catch (err) {
+      console.error('Error adding socket record:', err);
+      alert('Failed to add record. Please try again.');
+    }
   };
 
   const handleUpdate = async (id: string, data: Partial<Socket>) => {
-    await updateDoc(doc(db, 'sockets', id), data);
-    setEditingId(null);
+    try {
+      await updateDoc(doc(db, 'sockets', id), data);
+      setEditingId(null);
+    } catch (err) {
+      console.error('Error updating socket record:', err);
+      alert('Failed to update record. Please try again.');
+    }
   };
 
   const handleDelete = async () => {
     if (modal.id) {
-      await deleteDoc(doc(db, 'sockets', modal.id));
-      setModal({ isOpen: false, id: null });
+      try {
+        await deleteDoc(doc(db, 'sockets', modal.id));
+        setModal({ isOpen: false, id: null });
+      } catch (err) {
+        console.error('Error deleting socket record:', err);
+        alert('Failed to delete record. Please try again.');
+      }
     }
   };
 

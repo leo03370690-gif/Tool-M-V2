@@ -252,23 +252,38 @@ export default function PogoPinInfo({ isAdmin, selectedFacility }: { isAdmin: bo
 
   const handleAdd = async () => {
     if (!newPin.pinPn) return;
-    await addDoc(collection(db, 'pogoPins'), {
-      ...newPin,
-      facility: selectedFacility === 'ALL' ? (newPin.facility || '') : selectedFacility
-    });
-    setNewPin({});
-    setEditingId(null);
+    try {
+      await addDoc(collection(db, 'pogoPins'), {
+        ...newPin,
+        facility: selectedFacility === 'ALL' ? (newPin.facility || '') : selectedFacility
+      });
+      setNewPin({});
+      setEditingId(null);
+    } catch (err) {
+      console.error('Error adding pogo pin record:', err);
+      alert('Failed to add record. Please try again.');
+    }
   };
 
   const handleUpdate = async (id: string, data: Partial<PogoPin>) => {
-    await updateDoc(doc(db, 'pogoPins', id), data);
-    setEditingId(null);
+    try {
+      await updateDoc(doc(db, 'pogoPins', id), data);
+      setEditingId(null);
+    } catch (err) {
+      console.error('Error updating pogo pin record:', err);
+      alert('Failed to update record. Please try again.');
+    }
   };
 
   const handleDelete = async () => {
     if (modal.id) {
-      await deleteDoc(doc(db, 'pogoPins', modal.id));
-      setModal({ isOpen: false, id: null });
+      try {
+        await deleteDoc(doc(db, 'pogoPins', modal.id));
+        setModal({ isOpen: false, id: null });
+      } catch (err) {
+        console.error('Error deleting pogo pin record:', err);
+        alert('Failed to delete record. Please try again.');
+      }
     }
   };
 

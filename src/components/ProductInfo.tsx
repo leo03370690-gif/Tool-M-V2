@@ -172,20 +172,35 @@ export default function ProductInfo({ isAdmin, selectedFacility, onNavigate }: {
 
   const handleAdd = async () => {
     if (!newProduct.device) return;
-    await addDoc(collection(db, 'products'), newProduct);
-    setNewProduct({});
-    setEditingId(null);
+    try {
+      await addDoc(collection(db, 'products'), newProduct);
+      setNewProduct({});
+      setEditingId(null);
+    } catch (err) {
+      console.error('Error adding product record:', err);
+      alert('Failed to add record. Please try again.');
+    }
   };
 
   const handleUpdate = async (id: string, data: Partial<Product>) => {
-    await updateDoc(doc(db, 'products', id), data);
-    setEditingId(null);
+    try {
+      await updateDoc(doc(db, 'products', id), data);
+      setEditingId(null);
+    } catch (err) {
+      console.error('Error updating product record:', err);
+      alert('Failed to update record. Please try again.');
+    }
   };
 
   const handleDelete = async () => {
     if (modal.id) {
-      await deleteDoc(doc(db, 'products', modal.id));
-      setModal({ isOpen: false, id: null });
+      try {
+        await deleteDoc(doc(db, 'products', modal.id));
+        setModal({ isOpen: false, id: null });
+      } catch (err) {
+        console.error('Error deleting product record:', err);
+        alert('Failed to delete record. Please try again.');
+      }
     }
   };
 

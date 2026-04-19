@@ -148,23 +148,38 @@ export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: b
 
   const handleAdd = async () => {
     if (!newRecord.socketGroup) return;
-    await addDoc(collection(db, 'lifeTimes'), {
-      ...newRecord,
-      facility: selectedFacility === 'ALL' ? (newRecord.facility || '') : selectedFacility
-    });
-    setNewRecord({});
-    setEditingId(null);
+    try {
+      await addDoc(collection(db, 'lifeTimes'), {
+        ...newRecord,
+        facility: selectedFacility === 'ALL' ? (newRecord.facility || '') : selectedFacility
+      });
+      setNewRecord({});
+      setEditingId(null);
+    } catch (err) {
+      console.error('Error adding life time record:', err);
+      alert('Failed to add record. Please try again.');
+    }
   };
 
   const handleUpdate = async (id: string, data: Partial<LifeTime>) => {
-    await updateDoc(doc(db, 'lifeTimes', id), data);
-    setEditingId(null);
+    try {
+      await updateDoc(doc(db, 'lifeTimes', id), data);
+      setEditingId(null);
+    } catch (err) {
+      console.error('Error updating life time record:', err);
+      alert('Failed to update record. Please try again.');
+    }
   };
 
   const handleDelete = async () => {
     if (modal.id) {
-      await deleteDoc(doc(db, 'lifeTimes', modal.id));
-      setModal({ isOpen: false, id: null });
+      try {
+        await deleteDoc(doc(db, 'lifeTimes', modal.id));
+        setModal({ isOpen: false, id: null });
+      } catch (err) {
+        console.error('Error deleting life time record:', err);
+        alert('Failed to delete record. Please try again.');
+      }
     }
   };
 
