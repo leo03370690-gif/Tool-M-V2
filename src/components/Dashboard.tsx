@@ -149,95 +149,104 @@ export default function Dashboard({ user, role, selectedFacility, onBackToFacili
       </AnimatePresence>
 
       {/* Sidebar */}
-      <motion.aside 
+      <motion.aside
         initial={false}
         animate={{ width: isSidebarOpen ? 280 : 80 }}
+        style={{ backgroundColor: 'var(--sb-bg)', borderColor: 'var(--sb-border)' }}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-zinc-200/80 bg-white transition-transform duration-300 md:relative md:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex flex-col border-r transition-all duration-300 md:relative md:translate-x-0",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="flex h-20 items-center justify-between px-6">
           {isSidebarOpen ? (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="flex items-center gap-2"
             >
-              <div className="h-8 w-8 rounded bg-brand-primary flex items-center justify-center">
+              <div className="h-8 w-8 rounded bg-brand-primary flex items-center justify-center shrink-0">
                 <Cpu className="h-5 w-5 text-white" />
               </div>
-              <h2 className="font-serif text-xl font-bold italic tracking-tight">Tooling Matrix</h2>
+              <h2 className="font-serif text-xl font-bold italic tracking-tight" style={{ color: 'var(--sb-title)' }}>Tooling Matrix</h2>
             </motion.div>
           ) : (
             <div className="mx-auto h-8 w-8 rounded bg-brand-primary flex items-center justify-center">
               <Cpu className="h-5 w-5 text-white" />
             </div>
           )}
-          <button 
+          <button
             onClick={() => setIsMobileMenuOpen(false)}
-            className="md:hidden p-2 -mr-2 text-zinc-500 hover:bg-zinc-100 rounded-lg"
+            className="md:hidden p-2 -mr-2 rounded-lg transition-colors"
+            style={{ color: 'var(--sb-text)' }}
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
-          {menuItems.map((item, idx) => (
-            <button
-              key={item.id}
-              draggable
-              onDragStart={(e) => handleDragStart(e, idx)}
-              onDragOver={(e) => handleDragOver(e, idx)}
-              onDragEnd={handleDragEnd}
-              onClick={() => {
-                setActiveTab(item.id as Tab);
-                setTabHistory([]);
-                setIsMobileMenuOpen(false);
-              }}
-              className={cn(
-                "group relative flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all select-none",
-                activeTab === item.id
-                  ? "sidebar-item-active"
-                  : "text-zinc-500 hover:bg-zinc-100 hover:text-brand-primary"
-              )}
-            >
-              {isSidebarOpen && (
-                <GripVertical className="h-3.5 w-3.5 shrink-0 text-zinc-300 opacity-0 group-hover:opacity-100 cursor-grab transition-opacity" />
-              )}
-              <item.icon className={cn("h-5 w-5 shrink-0 transition-transform group-hover:scale-110", activeTab === item.id ? "text-brand-primary" : "text-zinc-400")} />
-              {isSidebarOpen && (
-                <motion.span
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="flex-1 text-left"
-                >
-                  {item.label}
-                </motion.span>
-              )}
-              {isSidebarOpen && activeTab === item.id && (
-                <motion.div layoutId="active-pill" className="h-1.5 w-1.5 rounded-full bg-brand-primary" />
-              )}
-            </button>
-          ))}
+          {menuItems.map((item, idx) => {
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, idx)}
+                onDragOver={(e) => handleDragOver(e, idx)}
+                onDragEnd={handleDragEnd}
+                onClick={() => {
+                  setActiveTab(item.id as Tab);
+                  setTabHistory([]);
+                  setIsMobileMenuOpen(false);
+                }}
+                style={{
+                  backgroundColor: isActive ? 'var(--sb-active)' : undefined,
+                  color: isActive ? 'var(--sb-text-active)' : 'var(--sb-text)',
+                }}
+                onMouseEnter={e => { if (!isActive) { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--sb-hover)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--sb-text-active)'; } }}
+                onMouseLeave={e => { if (!isActive) { (e.currentTarget as HTMLButtonElement).style.backgroundColor = ''; (e.currentTarget as HTMLButtonElement).style.color = 'var(--sb-text)'; } }}
+                className="group relative flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors select-none"
+              >
+                {isSidebarOpen && (
+                  <GripVertical className="h-3.5 w-3.5 shrink-0 opacity-0 group-hover:opacity-60 cursor-grab transition-opacity" style={{ color: 'var(--sb-grip)' }} />
+                )}
+                <item.icon className="h-5 w-5 shrink-0 transition-transform group-hover:scale-110" style={{ color: isActive ? 'var(--sb-icon-active)' : 'var(--sb-icon)' }} />
+                {isSidebarOpen && (
+                  <motion.span
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex-1 text-left"
+                  >
+                    {item.label}
+                  </motion.span>
+                )}
+                {isSidebarOpen && isActive && (
+                  <motion.div layoutId="active-pill" className="h-1.5 w-1.5 rounded-full bg-brand-primary" />
+                )}
+              </button>
+            );
+          })}
         </nav>
 
-        <div className="border-t border-zinc-100 p-4 bg-zinc-50/50">
+        <div className="border-t p-4" style={{ borderColor: 'var(--sb-section-border)', backgroundColor: 'var(--sb-section-bg)' }}>
           <div className="mb-4 flex items-center gap-3 px-3 py-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-black/5">
-              <Users className="h-5 w-5 text-zinc-500" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl shadow-sm ring-1 ring-black/10" style={{ backgroundColor: 'var(--sb-hover)' }}>
+              <Users className="h-5 w-5" style={{ color: 'var(--sb-icon)' }} />
             </div>
             {isSidebarOpen && (
               <div className="flex flex-col">
-                <span className="text-xs font-bold text-zinc-900">{user.email?.split('@')[0]}</span>
-                <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-400">{role || 'User'}</span>
+                <span className="text-xs font-bold" style={{ color: 'var(--sb-title)' }}>{user.email?.split('@')[0]}</span>
+                <span className="text-[10px] uppercase tracking-widest font-bold" style={{ color: 'var(--sb-text)' }}>{role || 'User'}</span>
               </div>
             )}
           </div>
           <button
             onClick={handleLogout}
+            style={{ color: 'var(--sb-logout)' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--sb-logout-hover)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = ''; }}
             className={cn(
-              "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-red-500 transition-all hover:bg-red-50",
+              "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors",
               !isSidebarOpen && "justify-center"
             )}
           >
