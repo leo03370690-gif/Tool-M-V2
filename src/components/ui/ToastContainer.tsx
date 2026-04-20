@@ -32,7 +32,17 @@ export default function ToastContainer() {
             className={`pointer-events-auto flex items-start gap-3 rounded-2xl border border-zinc-100 border-l-4 ${borders[toast.type]} bg-white px-4 py-3 shadow-xl max-w-sm`}
           >
             {icons[toast.type]}
-            <p className="flex-1 text-sm text-zinc-700 leading-snug pt-0.5">{toast.message}</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-zinc-700 leading-snug pt-0.5">{toast.message}</p>
+              {toast.action && (
+                <button
+                  onClick={() => { toast.action!.onClick(); removeToast(toast.id); }}
+                  className="mt-1.5 text-xs font-bold text-brand-primary hover:underline"
+                >
+                  {toast.action.label}
+                </button>
+              )}
+            </div>
             <button
               onClick={() => removeToast(toast.id)}
               className="shrink-0 text-zinc-400 hover:text-zinc-600 transition-colors mt-0.5"

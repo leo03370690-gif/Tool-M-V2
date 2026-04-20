@@ -28,9 +28,15 @@ export function useCollectionCRUD<T extends Record<string, unknown>>(collectionN
     }
   }, [collectionName, addToast]);
 
-  const remove = useCallback(async (id: string): Promise<boolean> => {
+  const remove = useCallback(async (id: string, undoData?: Partial<T>): Promise<boolean> => {
     try {
       await deleteDoc(doc(db, collectionName, id));
+      if (undoData) {
+        addToast('已刪除', 'success', {
+          label: '↩ 復原',
+          onClick: () => addDoc(collection(db, collectionName), undoData),
+        });
+      }
       return true;
     } catch (err) {
       console.error(`Error deleting from ${collectionName}:`, err);

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy, useMemo } from 'react';
+import { useData } from '../contexts/DataContext';
 import ErrorBoundary from './ErrorBoundary';
 import { User as FirebaseUser, signOut } from 'firebase/auth';
 import { auth } from '../firebase';
@@ -159,12 +160,64 @@ export default function Dashboard({ user, role, selectedFacility, onBackToFacili
 
   const handleLogout = () => signOut(auth);
 
-  const paletteCommands = menuItems.map(item => ({
-    id: item.id,
-    label: item.label,
-    icon: <item.icon className="h-4 w-4" />,
-    action: () => handleNavigate(item.id as Tab),
-  }));
+  const { products, sockets, changeKits, pogoPins, lifeTimes, loadBoards } = useData();
+
+  const paletteCommands = useMemo(() => {
+    const pageCommands = menuItems.map(item => ({
+      id: item.id,
+      label: item.label,
+      group: 'page' as const,
+      icon: <item.icon className="h-4 w-4" />,
+      action: () => handleNavigate(item.id as Tab),
+    }));
+
+    const dataCommands = [
+      ...products.map(p => ({
+        id: `product-${p.id}`,
+        label: p.device || p.id,
+        description: [p.projectName, p.facility].filter(Boolean).join(' · '),
+        group: 'data' as const,
+        action: () => handleNavigate('product'),
+      })),
+      ...sockets.map(s => ({
+        id: `socket-${s.id}`,
+        label: s.toolsId || s.id,
+        description: [s.package, s.facility].filter(Boolean).join(' · '),
+        group: 'data' as const,
+        action: () => handleNavigate('socket'),
+      })),
+      ...changeKits.map(c => ({
+        id: `changekit-${c.id}`,
+        label: c.toolsId || c.id,
+        description: [c.kind, c.facility].filter(Boolean).join(' · '),
+        group: 'data' as const,
+        action: () => handleNavigate('change-kit'),
+      })),
+      ...pogoPins.map(p => ({
+        id: `pogopin-${p.id}`,
+        label: p.pinPn || p.id,
+        description: p.facility,
+        group: 'data' as const,
+        action: () => handleNavigate('pogo-pin'),
+      })),
+      ...lifeTimes.map(l => ({
+        id: `lifetime-${l.id}`,
+        label: l.socketGroup || l.id,
+        description: [l.loadBoardGroup, l.facility].filter(Boolean).join(' · '),
+        group: 'data' as const,
+        action: () => handleNavigate('life-time'),
+      })),
+      ...loadBoards.map(lb => ({
+        id: `loadboard-${lb.id}`,
+        label: lb.lbName || lb.id,
+        description: [lb.projectName, lb.facility].filter(Boolean).join(' · '),
+        group: 'data' as const,
+        action: () => handleNavigate('load-board'),
+      })),
+    ];
+
+    return [...pageCommands, ...dataCommands];
+  }, [menuItems, products, sockets, changeKits, pogoPins, lifeTimes, loadBoards]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {

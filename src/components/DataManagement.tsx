@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
 import { collection, getDocs, writeBatch, doc, query, getCountFromServer, where } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
-import { Upload, Trash2, Loader2, AlertTriangle, CheckCircle2, FileSpreadsheet, DatabaseBackup, Download, Info } from 'lucide-react';
+import { Upload, Trash2, Loader2, AlertTriangle, CheckCircle2, FileSpreadsheet, DatabaseBackup, Download, Info, X } from 'lucide-react';
 import { cn, getFirestoreErrorMessage } from '../lib/utils';
 import { logAuditAction } from '../lib/audit';
 
@@ -65,6 +65,13 @@ interface ModalState {
   confirmText?: string;
 }
 
+interface PreviewData {
+  collectionId: string;
+  collectionLabel: string;
+  rows: Record<string, unknown>[];
+  totalRows: number;
+}
+
 export default function DataManagement() {
   const [maintenanceTarget, setMaintenanceTarget] = useState<string>('all');
   const [maintenanceAction, setMaintenanceAction] = useState<'clear_all' | 'clear_facility'>('clear_all');
@@ -76,6 +83,7 @@ export default function DataManagement() {
   const [files, setFiles] = useState<FileList | null>(null);
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState<ModalState>({ isOpen: false, title: '', message: '', type: 'info', onConfirm: () => {} });
+  const [preview, setPreview] = useState<PreviewData[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const closeModal = () => setModal(prev => ({ ...prev, isOpen: false }));
@@ -357,6 +365,57 @@ export default function DataManagement() {
     } catch (err) {
       console.error('Failed to get collection size:', err);
       return 0;
+    }
+  };
+
+  const handlePreviewClick = async () => {
+    if (!files || files.length === 0) {
+      setModal({ isOpen: true, title: 'Error', message: 'Please select at least one Excel file.', type: 'danger', onConfirm: closeModal, confirmText: 'OK' });
+      return;
+    }
+    setLoading(true);
+    try {
+      const previewResult: PreviewData[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+
+        if (importMode === 'specific') {
+          const jsonData = processSheetData(workbook.Sheets[workbook.SheetNames[0]], targetCollection);
+          const label = COLLECTIONS.find(c => c.id === targetCollection)?.label ?? targetCollection;
+          previewResult.push({ collectionId: targetCollection, collectionLabel: label, rows: jsonData, totalRows: jsonData.length });
+        } else {
+          // Auto mode: parse all matching sheets
+          for (const sheetName of workbook.SheetNames) {
+            const normalized = sheetName.toLowerCase().replace(/[^a-z0-9]/g, '');
+            let matchedCollection: string | null = null;
+            for (const [key, val] of Object.entries(SHEET_MAPPING)) {
+              const normKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+              if (normalized === normKey || normalized.includes(normKey) || normKey.includes(normalized)) {
+                matchedCollection = val;
+                break;
+              }
+            }
+            if (!matchedCollection) continue;
+            const jsonData = processSheetData(workbook.Sheets[sheetName], matchedCollection);
+            if (jsonData.length === 0) continue;
+            const label = COLLECTIONS.find(c => c.id === matchedCollection)?.label ?? matchedCollection!;
+            const existing = previewResult.find(p => p.collectionId === matchedCollection);
+            if (existing) {
+              existing.rows.push(...jsonData);
+              existing.totalRows += jsonData.length;
+            } else {
+              previewResult.push({ collectionId: matchedCollection!, collectionLabel: label, rows: jsonData, totalRows: jsonData.length });
+            }
+          }
+        }
+      }
+      setPreview(previewResult.length > 0 ? previewResult : [{ collectionId: 'none', collectionLabel: '無匹配資料', rows: [], totalRows: 0 }]);
+    } catch (err) {
+      console.error('Preview error:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -798,7 +857,7 @@ export default function DataManagement() {
             </div>
 
             <button
-              onClick={handleImportClick}
+              onClick={handlePreviewClick}
               disabled={loading || !files || files.length === 0}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-primary px-8 py-3 text-sm font-bold text-white transition-all hover:bg-zinc-800 disabled:opacity-50 shadow-lg shadow-brand-primary/20 active:scale-[0.98]"
             >
@@ -919,6 +978,78 @@ export default function DataManagement() {
           </div>
         </div>
       </div>
+
+      {/* Preview Modal */}
+      {preview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-4xl max-h-[85vh] flex flex-col rounded-2xl bg-white shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-zinc-100">
+              <div>
+                <h3 className="text-xl font-bold text-zinc-900">匯入預覽</h3>
+                <p className="text-sm text-zinc-500 mt-1">確認欄位對應正確後再執行匯入</p>
+              </div>
+              <button onClick={() => setPreview(null)} className="p-2 rounded-full hover:bg-zinc-100 text-zinc-400">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {preview.map(p => (
+                <div key={p.collectionId}>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-bold text-zinc-800">{p.collectionLabel}</h4>
+                    <span className="text-xs text-zinc-400 bg-zinc-100 px-2 py-1 rounded-full">共 {p.totalRows} 筆</span>
+                  </div>
+                  {p.rows.length === 0 ? (
+                    <div className="py-4 text-center text-zinc-400 text-sm border border-dashed rounded-xl">未偵測到有效資料列</div>
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border border-zinc-200">
+                      <table className="text-xs w-full">
+                        <thead>
+                          <tr className="bg-zinc-50 border-b border-zinc-200">
+                            {Object.keys(p.rows[0]).map(key => (
+                              <th key={key} className="px-3 py-2 text-left font-bold text-zinc-500 whitespace-nowrap">{key}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {p.rows.slice(0, 10).map((row, i) => (
+                            <tr key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
+                              {Object.values(row).map((val, j) => (
+                                <td key={j} className="px-3 py-2 text-zinc-700 whitespace-nowrap max-w-[150px] truncate">{String(val ?? '')}</td>
+                              ))}
+                            </tr>
+                          ))}
+                          {p.totalRows > 10 && (
+                            <tr>
+                              <td colSpan={Object.keys(p.rows[0]).length} className="px-3 py-2 text-center text-zinc-400 italic">
+                                … 另有 {p.totalRows - 10} 筆未顯示
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end gap-3 p-6 border-t border-zinc-100">
+              <button onClick={() => setPreview(null)} className="px-6 py-2.5 text-sm font-bold text-zinc-500 hover:bg-zinc-100 rounded-xl transition-colors">
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  setPreview(null);
+                  handleImportClick();
+                }}
+                className="flex items-center gap-2 px-6 py-2.5 text-sm font-bold text-white bg-zinc-900 hover:bg-zinc-700 rounded-xl transition-colors shadow-lg"
+              >
+                確認匯入
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Custom Modal */}
       <AnimatePresence>

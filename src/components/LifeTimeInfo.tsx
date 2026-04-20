@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCollectionCRUD } from '../lib/useCollectionCRUD';
-import { Plus, Trash2, Edit2, Search, Check, X, Filter, ArrowUpDown } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, Check, X, Filter, ArrowUpDown, Download, Copy } from 'lucide-react';
+import { useExportExcel } from '../lib/useExportExcel';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { DoubleScrollbar } from './ui/DoubleScrollbar';
@@ -36,6 +37,7 @@ const LifeTimeRow = React.memo(({
   handleUpdate,
   setModal,
   setSaveModal,
+  handleDuplicate,
   isSelected,
   onToggle
 }: {
@@ -48,6 +50,7 @@ const LifeTimeRow = React.memo(({
   handleUpdate: (id: string, data: any) => void,
   setModal: (modal: any) => void,
   setSaveModal: (modal: any) => void,
+  handleDuplicate: (item: LifeTime) => void,
   isSelected: boolean,
   onToggle: () => void
 }) => {
@@ -89,6 +92,20 @@ const LifeTimeRow = React.memo(({
               onChange={(e) => setLocalData({ ...localData, [col.key]: col.key === 'pogoPinQty' || col.key === 'lifeTime' ? Number(e.target.value) : e.target.value })}
               className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all"
               autoFocus={col.key === 'facility'}
+              onKeyDown={(e) => {
+                if (e.key === 'Tab') {
+                  e.preventDefault();
+                  const tr = (e.currentTarget as HTMLElement).closest('tr');
+                  if (!tr) return;
+                  const inputs = Array.from(tr.querySelectorAll<HTMLInputElement>('input'));
+                  const idx = inputs.indexOf(e.currentTarget as HTMLInputElement);
+                  const next = inputs[e.shiftKey ? idx - 1 : idx + 1];
+                  next?.focus();
+                } else if (e.key === 'Escape') {
+                  setLocalData(record);
+                  setEditingId(null);
+                }
+              }}
             />
           ) : (
             <span className={cn(
@@ -109,14 +126,21 @@ const LifeTimeRow = React.memo(({
             </div>
           ) : (
             <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button 
-                onClick={() => setEditingId(record.id)} 
+              <button
+                onClick={() => setEditingId(record.id)}
                 className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-zinc-400 hover:text-brand-primary transition-all"
               >
                 <Edit2 className="h-4 w-4" />
               </button>
-              <button 
-                onClick={() => setModal({ isOpen: true, id: record.id })} 
+              <button
+                onClick={() => handleDuplicate(record)}
+                className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-zinc-400 hover:text-emerald-500 transition-all"
+                title="複製"
+              >
+                <Copy className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setModal({ isOpen: true, id: record.id })}
                 className="p-2 rounded-lg hover:bg-rose-50 text-zinc-400 hover:text-rose-600 transition-all"
               >
                 <Trash2 className="h-4 w-4" />
@@ -132,6 +156,7 @@ const LifeTimeRow = React.memo(({
 export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: boolean, selectedFacility: string }) {
   const { add, update, remove } = useCollectionCRUD<LifeTime>('lifeTimes');
   const { addToast } = useToast();
+  const { exportToExcel } = useExportExcel();
   const { selectedIds, toggleOne, toggleAll, clearSelection, isAllSelected } = useBulkSelect();
   const { views: savedViews, saveView, deleteView } = useSavedViews('lifeTimeInfo_savedViews');
   const { lifeTimes: allRecords } = useData();
@@ -187,9 +212,17 @@ export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: b
 
   const handleDelete = async () => {
     if (modal.id) {
-      const ok = await remove(modal.id);
+      const item = records.find(r => r.id === modal.id);
+      const { id: _id, ...undoData } = (item ?? {}) as any;
+      const ok = await remove(modal.id, Object.keys(undoData).length ? undoData : undefined);
       if (ok) setModal({ isOpen: false, id: null });
     }
+  };
+
+  const handleDuplicate = async (item: LifeTime) => {
+    const { id: _id, ...data } = item as any;
+    const ok = await add(data as Partial<LifeTime>);
+    if (ok) addToast('記錄已複製', 'success');
   };
 
   const handleBulkDelete = async () => {
@@ -266,15 +299,24 @@ export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: b
           <h2 className="font-serif text-4xl italic text-zinc-900 tracking-tight">Life Time Info</h2>
           <p className="text-xs text-zinc-400 uppercase tracking-[0.2em] font-bold">Manage socket and pogo pin life cycle data</p>
         </div>
-        {isAdmin && (
-          <button 
-            onClick={() => setEditingId('new')}
-            className="flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-bold text-white hover:opacity-90 transition-all shadow-lg shadow-black/10 active:scale-95 whitespace-nowrap"
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => exportToExcel(filteredRecords, columns, 'life_times')}
+            className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all shadow-sm active:scale-95 whitespace-nowrap"
           >
-            <Plus className="h-4 w-4" />
-            <span>ADD RECORD</span>
+            <Download className="h-4 w-4" />
+            <span>匯出 Excel</span>
           </button>
-        )}
+          {isAdmin && (
+            <button
+              onClick={() => setEditingId('new')}
+              className="flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-bold text-white hover:opacity-90 transition-all shadow-lg shadow-black/10 active:scale-95 whitespace-nowrap"
+            >
+              <Plus className="h-4 w-4" />
+              <span>ADD RECORD</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between surface-card p-2">
@@ -425,6 +467,7 @@ export default function LifeTimeInfo({ isAdmin, selectedFacility }: { isAdmin: b
                     handleUpdate={handleUpdate}
                     setModal={setModal}
                     setSaveModal={setSaveModal}
+                    handleDuplicate={handleDuplicate}
                     isSelected={selectedIds.has(record.id)}
                     onToggle={() => toggleOne(record.id)}
                   />

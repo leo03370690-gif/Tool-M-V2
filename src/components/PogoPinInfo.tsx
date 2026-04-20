@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCollectionCRUD } from '../lib/useCollectionCRUD';
-import { Plus, Trash2, Edit2, Search, Check, X, List, LayoutGrid, Filter, ArrowUpDown } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, Check, X, List, LayoutGrid, Filter, ArrowUpDown, Download, Copy } from 'lucide-react';
+import { useExportExcel } from '../lib/useExportExcel';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { usePersistentState } from '../lib/usePersistentState';
@@ -22,22 +23,24 @@ interface PogoPin {
   qty: number;
 }
 
-const PinCard = React.memo(({ 
-  pin, 
-  isAdmin, 
-  editingId, 
-  setEditingId, 
-  handleUpdate, 
+const PinCard = React.memo(({
+  pin,
+  isAdmin,
+  editingId,
+  setEditingId,
+  handleUpdate,
   setModal,
-  setSaveModal
-}: { 
-  pin: PogoPin, 
-  isAdmin: boolean, 
-  editingId: string | null, 
-  setEditingId: (id: string | null) => void, 
-  handleUpdate: (id: string, data: any) => void, 
+  setSaveModal,
+  handleDuplicate
+}: {
+  pin: PogoPin,
+  isAdmin: boolean,
+  editingId: string | null,
+  setEditingId: (id: string | null) => void,
+  handleUpdate: (id: string, data: any) => void,
   setModal: (modal: any) => void,
-  setSaveModal: (modal: any) => void
+  setSaveModal: (modal: any) => void,
+  handleDuplicate: (item: PogoPin) => void
 }) => {
   const [localData, setLocalData] = useState<Partial<PogoPin>>(pin);
   
@@ -113,15 +116,22 @@ const PinCard = React.memo(({
             </>
           ) : (
             <>
-              <button 
-                onClick={() => setEditingId(pin.id)} 
+              <button
+                onClick={() => setEditingId(pin.id)}
                 className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-zinc-50 py-2.5 text-xs font-bold text-zinc-500 hover:bg-brand-primary hover:text-white transition-all"
               >
                 <Edit2 className="h-3.5 w-3.5" />
                 EDIT
               </button>
-              <button 
-                onClick={() => setModal({ isOpen: true, id: pin.id })} 
+              <button
+                onClick={() => handleDuplicate(pin)}
+                className="p-2.5 rounded-xl bg-zinc-50 text-zinc-400 hover:bg-emerald-50 hover:text-emerald-500 transition-all"
+                title="複製"
+              >
+                <Copy className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setModal({ isOpen: true, id: pin.id })}
                 className="p-2.5 rounded-xl bg-zinc-50 text-zinc-400 hover:bg-rose-50 hover:text-rose-600 transition-all"
               >
                 <Trash2 className="h-4 w-4" />
@@ -145,6 +155,7 @@ const PinRow = React.memo(({
   handleUpdate,
   setModal,
   setSaveModal,
+  handleDuplicate,
   isSelected,
   onToggle
 }: {
@@ -158,6 +169,7 @@ const PinRow = React.memo(({
   handleUpdate: (id: string, data: any) => void,
   setModal: (modal: any) => void,
   setSaveModal: (modal: any) => void,
+  handleDuplicate: (item: PogoPin) => void,
   isSelected: boolean,
   onToggle: () => void
 }) => {
@@ -197,6 +209,20 @@ const PinRow = React.memo(({
               onChange={(e) => setLocalData({ ...localData, [col.key]: col.key === 'qty' ? Number(e.target.value) : e.target.value })}
               className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all"
               autoFocus={col.key === 'facility'}
+              onKeyDown={(e) => {
+                if (e.key === 'Tab') {
+                  e.preventDefault();
+                  const tr = (e.currentTarget as HTMLElement).closest('tr');
+                  if (!tr) return;
+                  const inputs = Array.from(tr.querySelectorAll<HTMLInputElement>('input'));
+                  const idx = inputs.indexOf(e.currentTarget as HTMLInputElement);
+                  const next = inputs[e.shiftKey ? idx - 1 : idx + 1];
+                  next?.focus();
+                } else if (e.key === 'Escape') {
+                  setLocalData(pin);
+                  setEditingId(null);
+                }
+              }}
             />
           ) : (
             <span className={cn(
@@ -217,14 +243,21 @@ const PinRow = React.memo(({
             </div>
           ) : (
             <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button 
-                onClick={() => setEditingId(pin.id)} 
+              <button
+                onClick={() => setEditingId(pin.id)}
                 className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-zinc-400 hover:text-brand-primary transition-all"
               >
                 <Edit2 className="h-4 w-4" />
               </button>
-              <button 
-                onClick={() => setModal({ isOpen: true, id: pin.id })} 
+              <button
+                onClick={() => handleDuplicate(pin)}
+                className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-zinc-400 hover:text-emerald-500 transition-all"
+                title="複製"
+              >
+                <Copy className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setModal({ isOpen: true, id: pin.id })}
                 className="p-2 rounded-lg hover:bg-rose-50 text-zinc-400 hover:text-rose-600 transition-all"
               >
                 <Trash2 className="h-4 w-4" />
@@ -240,6 +273,7 @@ const PinRow = React.memo(({
 export default function PogoPinInfo({ isAdmin, selectedFacility }: { isAdmin: boolean, selectedFacility: string }) {
   const { add, update, remove } = useCollectionCRUD<PogoPin>('pogoPins');
   const { addToast } = useToast();
+  const { exportToExcel } = useExportExcel();
   const { selectedIds, toggleOne, toggleAll, clearSelection, isAllSelected } = useBulkSelect();
   const { views: savedViews, saveView, deleteView } = useSavedViews('pogoPinInfo_savedViews');
   const { pogoPins: allPins } = useData();
@@ -292,9 +326,17 @@ export default function PogoPinInfo({ isAdmin, selectedFacility }: { isAdmin: bo
 
   const handleDelete = async () => {
     if (modal.id) {
-      const ok = await remove(modal.id);
+      const item = pins.find(p => p.id === modal.id);
+      const { id: _id, ...undoData } = (item ?? {}) as any;
+      const ok = await remove(modal.id, Object.keys(undoData).length ? undoData : undefined);
       if (ok) setModal({ isOpen: false, id: null });
     }
+  };
+
+  const handleDuplicate = async (item: PogoPin) => {
+    const { id: _id, ...data } = item as any;
+    const ok = await add(data as Partial<PogoPin>);
+    if (ok) addToast('記錄已複製', 'success');
   };
 
   const handleBulkDelete = async () => {
@@ -412,8 +454,15 @@ export default function PogoPinInfo({ isAdmin, selectedFacility }: { isAdmin: bo
               TABLE
             </button>
           </div>
+          <button
+            onClick={() => exportToExcel(filteredPins, columns.filter(col => visibleColumns.includes(col.key)), 'pogo_pins')}
+            className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all shadow-sm active:scale-95 whitespace-nowrap"
+          >
+            <Download className="h-4 w-4" />
+            <span>匯出 Excel</span>
+          </button>
           {isAdmin && (
-            <button 
+            <button
               onClick={() => setEditingId('new')}
               className="flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-bold text-white hover:opacity-90 transition-all shadow-lg shadow-black/10 active:scale-95"
             >
@@ -478,6 +527,7 @@ export default function PogoPinInfo({ isAdmin, selectedFacility }: { isAdmin: bo
                   handleUpdate={handleUpdate}
                   setModal={setModal}
                   setSaveModal={setSaveModal}
+                  handleDuplicate={handleDuplicate}
                 />
               ))}
             </AnimatePresence>
@@ -568,6 +618,7 @@ export default function PogoPinInfo({ isAdmin, selectedFacility }: { isAdmin: bo
                       handleUpdate={handleUpdate}
                       setModal={setModal}
                       setSaveModal={setSaveModal}
+                      handleDuplicate={handleDuplicate}
                       isSelected={selectedIds.has(pin.id)}
                       onToggle={() => toggleOne(pin.id)}
                     />

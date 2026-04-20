@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCollectionCRUD } from '../lib/useCollectionCRUD';
-import { Plus, Trash2, Edit2, Check, X, Search, MoreHorizontal, BarChart2, List, Filter, ArrowUpDown } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, Search, MoreHorizontal, BarChart2, List, Filter, ArrowUpDown, Download, Copy } from 'lucide-react';
+import { useExportExcel } from '../lib/useExportExcel';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { DoubleScrollbar } from './ui/DoubleScrollbar';
@@ -55,6 +56,7 @@ const SocketRow = React.memo(({
   handleUpdate,
   setModal,
   setSaveModal,
+  handleDuplicate,
   isSelected,
   onToggle
 }: {
@@ -67,6 +69,7 @@ const SocketRow = React.memo(({
   handleUpdate: (id: string, data: any) => void,
   setModal: (modal: any) => void,
   setSaveModal: (modal: any) => void,
+  handleDuplicate: (item: Socket) => void,
   isSelected: boolean,
   onToggle: () => void
 }) => {
@@ -107,6 +110,20 @@ const SocketRow = React.memo(({
               onChange={(e) => setLocalData({ ...localData, [col.key]: typeof socket[col.key as keyof Socket] === 'number' ? Number(e.target.value) : e.target.value })}
               className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all"
               autoFocus={col.key === 'toolsId'}
+              onKeyDown={(e) => {
+                if (e.key === 'Tab') {
+                  e.preventDefault();
+                  const tr = (e.currentTarget as HTMLElement).closest('tr');
+                  if (!tr) return;
+                  const inputs = Array.from(tr.querySelectorAll<HTMLInputElement>('input'));
+                  const idx = inputs.indexOf(e.currentTarget as HTMLInputElement);
+                  const next = inputs[e.shiftKey ? idx - 1 : idx + 1];
+                  next?.focus();
+                } else if (e.key === 'Escape') {
+                  setLocalData(socket);
+                  setEditingId(null);
+                }
+              }}
             />
           ) : (
             <div className="flex items-center gap-3">
@@ -135,14 +152,21 @@ const SocketRow = React.memo(({
             </div>
           ) : (
             <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button 
-                onClick={() => setEditingId(socket.id)} 
+              <button
+                onClick={() => setEditingId(socket.id)}
                 className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-zinc-400 hover:text-brand-primary transition-all"
               >
                 <Edit2 className="h-4 w-4" />
               </button>
-              <button 
-                onClick={() => setModal({ isOpen: true, id: socket.id })} 
+              <button
+                onClick={() => handleDuplicate(socket)}
+                className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-zinc-400 hover:text-emerald-500 transition-all"
+                title="複製"
+              >
+                <Copy className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setModal({ isOpen: true, id: socket.id })}
                 className="p-2 rounded-lg hover:bg-rose-50 text-zinc-400 hover:text-rose-600 transition-all"
               >
                 <Trash2 className="h-4 w-4" />
@@ -158,6 +182,7 @@ const SocketRow = React.memo(({
 export default function SocketInfo({ isAdmin, selectedFacility }: { isAdmin: boolean, selectedFacility: string }) {
   const { add, update, remove } = useCollectionCRUD<Socket>('sockets');
   const { addToast } = useToast();
+  const { exportToExcel } = useExportExcel();
   const { selectedIds, toggleOne, toggleAll, clearSelection, isAllSelected } = useBulkSelect();
   const { views: savedViews, saveView, deleteView } = useSavedViews('socketInfo_savedViews');
   const { sockets: allSockets, loading } = useData();
@@ -217,9 +242,17 @@ export default function SocketInfo({ isAdmin, selectedFacility }: { isAdmin: boo
 
   const handleDelete = async () => {
     if (modal.id) {
-      const ok = await remove(modal.id);
+      const item = sockets.find(s => s.id === modal.id);
+      const { id: _id, ...undoData } = (item ?? {}) as any;
+      const ok = await remove(modal.id, Object.keys(undoData).length ? undoData : undefined);
       if (ok) setModal({ isOpen: false, id: null });
     }
+  };
+
+  const handleDuplicate = async (item: Socket) => {
+    const { id: _id, ...data } = item as any;
+    const ok = await add(data as Partial<Socket>);
+    if (ok) addToast('記錄已複製', 'success');
   };
 
   const handleBulkDelete = async () => {
@@ -363,8 +396,15 @@ export default function SocketInfo({ isAdmin, selectedFacility }: { isAdmin: boo
               STATS
             </button>
           </div>
+          <button
+            onClick={() => exportToExcel(filteredSockets, columns, 'sockets')}
+            className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all shadow-sm active:scale-95 whitespace-nowrap"
+          >
+            <Download className="h-4 w-4" />
+            <span>匯出 Excel</span>
+          </button>
           {isAdmin && (
-            <button 
+            <button
               onClick={() => setEditingId('new')}
               className="flex items-center gap-2 rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-black/10 active:scale-95 whitespace-nowrap"
             >
@@ -543,6 +583,7 @@ export default function SocketInfo({ isAdmin, selectedFacility }: { isAdmin: boo
                     handleUpdate={handleUpdate}
                     setModal={setModal}
                     setSaveModal={setSaveModal}
+                    handleDuplicate={handleDuplicate}
                     isSelected={selectedIds.has(socket.id)}
                     onToggle={() => toggleOne(socket.id)}
                   />

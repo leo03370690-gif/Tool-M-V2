@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCollectionCRUD } from '../lib/useCollectionCRUD';
-import { Plus, Trash2, Edit2, Check, X, Search, MoreHorizontal, Filter, ArrowUpDown } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, Search, MoreHorizontal, Filter, ArrowUpDown, Download, Copy } from 'lucide-react';
+import { useExportExcel } from '../lib/useExportExcel';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { DoubleScrollbar } from './ui/DoubleScrollbar';
@@ -50,6 +51,7 @@ const ProductRow = React.memo(({
   setModal,
   setSelectedDevice,
   setSaveModal,
+  handleDuplicate,
   isSelected,
   onToggle
 }: {
@@ -63,6 +65,7 @@ const ProductRow = React.memo(({
   setModal: (modal: any) => void,
   setSelectedDevice: (device: string) => void,
   setSaveModal: (modal: any) => void,
+  handleDuplicate: (item: Product) => void,
   isSelected: boolean,
   onToggle: () => void
 }) => {
@@ -103,6 +106,20 @@ const ProductRow = React.memo(({
               onChange={(e) => setLocalData({ ...localData, [col.key]: e.target.value })}
               className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs focus:ring-2 focus:ring-brand-primary/10 focus:border-brand-primary outline-none transition-all"
               autoFocus={col.key === 'facility'}
+              onKeyDown={(e) => {
+                if (e.key === 'Tab') {
+                  e.preventDefault();
+                  const tr = (e.currentTarget as HTMLElement).closest('tr');
+                  if (!tr) return;
+                  const inputs = Array.from(tr.querySelectorAll<HTMLInputElement>('input'));
+                  const idx = inputs.indexOf(e.currentTarget as HTMLInputElement);
+                  const next = inputs[e.shiftKey ? idx - 1 : idx + 1];
+                  next?.focus();
+                } else if (e.key === 'Escape') {
+                  setLocalData(product);
+                  setEditingId(null);
+                }
+              }}
             />
           ) : col.key === 'device' ? (
             <button
@@ -127,14 +144,21 @@ const ProductRow = React.memo(({
             </div>
           ) : (
             <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button 
-                onClick={() => setEditingId(product.id)} 
+              <button
+                onClick={() => setEditingId(product.id)}
                 className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-zinc-400 hover:text-brand-primary transition-all"
               >
                 <Edit2 className="h-4 w-4" />
               </button>
-              <button 
-                onClick={() => setModal({ isOpen: true, id: product.id })} 
+              <button
+                onClick={() => handleDuplicate(product)}
+                className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-zinc-400 hover:text-emerald-500 transition-all"
+                title="複製"
+              >
+                <Copy className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setModal({ isOpen: true, id: product.id })}
                 className="p-2 rounded-lg hover:bg-rose-50 text-zinc-400 hover:text-rose-600 transition-all"
               >
                 <Trash2 className="h-4 w-4" />
@@ -150,6 +174,7 @@ const ProductRow = React.memo(({
 export default function ProductInfo({ isAdmin, selectedFacility, onNavigate }: { isAdmin: boolean, selectedFacility: string, onNavigate?: (tab: string) => void }) {
   const { add, update, remove } = useCollectionCRUD<Product>('products');
   const { addToast } = useToast();
+  const { exportToExcel } = useExportExcel();
   const { selectedIds, toggleOne, toggleAll, clearSelection, isAllSelected } = useBulkSelect();
   const { views: savedViews, saveView, deleteView } = useSavedViews('productInfo_savedViews');
   const { products: allProducts, lifeTimes: lifeTimesData, loading } = useData();
@@ -212,9 +237,17 @@ export default function ProductInfo({ isAdmin, selectedFacility, onNavigate }: {
 
   const handleDelete = async () => {
     if (modal.id) {
-      const ok = await remove(modal.id);
+      const item = products.find(p => p.id === modal.id);
+      const { id: _id, ...undoData } = (item ?? {}) as any;
+      const ok = await remove(modal.id, Object.keys(undoData).length ? undoData : undefined);
       if (ok) setModal({ isOpen: false, id: null });
     }
+  };
+
+  const handleDuplicate = async (item: Product) => {
+    const { id: _id, ...data } = item as any;
+    const ok = await add(data as Partial<Product>);
+    if (ok) addToast('記錄已複製', 'success');
   };
 
   const handleBulkDelete = async () => {
@@ -409,14 +442,25 @@ export default function ProductInfo({ isAdmin, selectedFacility, onNavigate }: {
             </button>
           </div>
         </div>
-        {isAdmin && viewMode === 'inventory' && (
-          <button 
-            onClick={() => setEditingId('new')}
-            className="flex items-center gap-2 rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-black/10 active:scale-95 whitespace-nowrap mb-2 sm:mb-0"
-          >
-            <Plus className="h-4 w-4" />
-            <span>ADD PRODUCT</span>
-          </button>
+        {viewMode === 'inventory' && (
+          <div className="flex items-center gap-3 mb-2 sm:mb-0">
+            <button
+              onClick={() => exportToExcel(filteredProducts, columns, 'products')}
+              className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-bold text-zinc-600 hover:bg-zinc-50 transition-all shadow-sm active:scale-95 whitespace-nowrap"
+            >
+              <Download className="h-4 w-4" />
+              <span>匯出 Excel</span>
+            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setEditingId('new')}
+                className="flex items-center gap-2 rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-zinc-800 transition-all shadow-lg shadow-black/10 active:scale-95 whitespace-nowrap"
+              >
+                <Plus className="h-4 w-4" />
+                <span>ADD PRODUCT</span>
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -583,6 +627,7 @@ export default function ProductInfo({ isAdmin, selectedFacility, onNavigate }: {
                         setModal={setModal}
                         setSelectedDevice={setSelectedDevice}
                         setSaveModal={setSaveModal}
+                        handleDuplicate={handleDuplicate}
                         isSelected={selectedIds.has(product.id)}
                         onToggle={() => toggleOne(product.id)}
                       />
