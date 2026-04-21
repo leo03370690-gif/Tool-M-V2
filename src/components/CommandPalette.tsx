@@ -34,8 +34,8 @@ export default function CommandPalette({ commands, isOpen, onClose }: CommandPal
     const q = query.toLowerCase().trim();
     const matched = q
       ? commands.filter(c =>
-          c.label.toLowerCase().includes(q) ||
-          (c.description || '').toLowerCase().includes(q)
+          String(c.label || '').toLowerCase().includes(q) ||
+          String(c.description || '').toLowerCase().includes(q)
         )
       : commands.filter(c => c.group === 'page'); // show only pages when empty
 
