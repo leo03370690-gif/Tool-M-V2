@@ -53,7 +53,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    const toDoc = <T,>(doc: any): T => ({ id: doc.id, ...doc.data() } as T);
+    const toDoc = <T,>(doc: any): T => ({ ...doc.data(), id: doc.id } as T);
 
     const unsubs = [
       onSnapshot(collection(db, 'products'), (snap) => {
